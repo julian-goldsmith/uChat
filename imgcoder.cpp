@@ -206,6 +206,70 @@ void dctBlock(macroblock_t* block)
     dctQuantize(block->blockDataDCT[2]);
 }
 
+double* rleValue(double data[MB_SIZE][MB_SIZE])
+{
+    // loop through the data.  if the current value is the same as the last, increment counter.  if it differs, write counter and value, then reset counter
+    double* odata = (double*) calloc(MB_SIZE * MB_SIZE * 2, sizeof(double));    // resize later
+    int odatacount = 0;
+
+    double counter = 0.0;
+    double value = data[0][0];
+
+    for(int x = 0; x < MB_SIZE; x++)
+    {
+        for(int y = 0; y < MB_SIZE; y++)
+        {
+            if(value == data[x][y])
+            {
+                counter++;
+            }
+            else
+            {
+                odata[odatacount++] = counter;
+                odata[odatacount++] = value;
+                counter = 0.0;
+            }
+        }
+    }
+
+    return odata;
+}
+
+void unrleValue(double data[MB_SIZE][MB_SIZE], double* rleData)
+{
+    double counter = 0.0;
+    int x = 0;
+    int y = 0;
+
+    for(int i = 0; i < MB_SIZE * MB_SIZE; i++)
+    {
+        counter = rleData[i * 2];
+
+        while(counter > 0.0)
+        {
+            counter--;
+
+            if(x == MB_SIZE)
+            {
+                x = 0;
+                y++;
+            }
+
+            data[x][y] = rleData[i * 2 + 1];
+        }
+    }
+}
+
+double* rleBlock(macroblock_t* block)
+{
+    block->rleData = rleValue(block->blockDataDCT[0]);
+}
+
+void unrleBlock(macroblock_t* block)
+{
+    unrleValue(block->blockDataDCT[0], block->rleData);
+}
+
 void idctBlock(macroblock_t* block)
 {
     unsigned char pixels[3][MB_SIZE][MB_SIZE];
@@ -247,6 +311,7 @@ void dctBlocks(macroblock_t *blocks)
     for(macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
     {
         dctBlock(block);
+        rleBlock(block);
     }
 }
 
@@ -302,6 +367,7 @@ void decodeImage(const unsigned char* prevFrame, macroblock_t* blocks, unsigned 
             }
         }
 
+        unrleBlock(block);
         idctBlock(block);
 
         for(int x = 0; x < MB_SIZE; x++)

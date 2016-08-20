@@ -13,6 +13,7 @@ typedef struct
     double rms;
     unsigned char blockData[MB_SIZE][MB_SIZE][3];
     double blockDataDCT[3][MB_SIZE][MB_SIZE];
+    double* rleData;
 } macroblock_t;
 
 void encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView);
