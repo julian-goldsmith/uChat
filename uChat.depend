@@ -1,0 +1,139 @@
+# depslib dependency file v1.0
+1469503989 source:d:\dev\uchat\main.cpp
+	"imgui/imgui.h"
+	"imgui/imgui_impl_sdl_gl3.h"
+	<stdio.h>
+	"GL/gl3w.h"
+	<SDL2/SDL.h>
+	<vector>
+	<string>
+	"videoInput/videoInput.h"
+	<fstream>
+	<iostream>
+	"imgcoder.h"
+
+1468034467 source:d:\dev\uchat\imgui\imgui.cpp
+	"imgui.h"
+	"imgui_internal.h"
+	<ctype.h>
+	<stdlib.h>
+	<stdio.h>
+	<limits.h>
+	<stddef.h>
+	<stdint.h>
+	"stb_textedit.h"
+	<windows.h>
+	<imm.h>
+	"imgui_user.inl"
+
+1468034484 d:\dev\uchat\imgui\imgui.h
+	"imconfig.h"
+	<float.h>
+	<stdarg.h>
+	<stddef.h>
+	<string.h>
+	<assert.h>
+	"imgui_user.h"
+
+1468035575 d:\dev\uchat\imgui\imconfig.h
+
+1468034519 d:\dev\uchat\imgui\imgui_internal.h
+	<stdio.h>
+	<math.h>
+	"stb_textedit.h"
+
+1468034554 d:\dev\uchat\imgui\stb_textedit.h
+	<string.h>
+
+1468034497 source:d:\dev\uchat\imgui\imgui_demo.cpp
+	"imgui.h"
+	<ctype.h>
+	<math.h>
+	<stdio.h>
+	<stdlib.h>
+	<stddef.h>
+	<stdint.h>
+
+1468034506 source:d:\dev\uchat\imgui\imgui_draw.cpp
+	"imgui.h"
+	"imgui_internal.h"
+	<stdio.h>
+	<malloc.h>
+	<alloca.h>
+	"stb_rect_pack.h"
+	"stb_truetype.h"
+
+1468034545 d:\dev\uchat\imgui\stb_rect_pack.h
+	<stdlib.h>
+	<assert.h>
+
+1468034565 d:\dev\uchat\imgui\stb_truetype.h
+	"stb_truetype.h"
+	<stdio.h>
+	"stb_truetype.h"
+	<math.h>
+	<math.h>
+	<math.h>
+	<stdlib.h>
+	<assert.h>
+	<string.h>
+	<memory.h>
+
+1468206319 source:d:\dev\uchat\imgui\imgui_impl_sdl_gl3.cpp
+	"imgui.h"
+	"imgui_impl_sdl_gl3.h"
+	<SDL2/SDL.h>
+	<SDL2/SDL_syswm.h>
+	"../GL/gl3w.h"
+
+1468035294 d:\dev\uchat\imgui\imgui_impl_sdl_gl3.h
+
+1468036013 source:d:\dev\uchat\gl\gl3w.c
+	"gl3w.h"
+	<windows.h>
+	<Carbon/Carbon.h>
+	<dlfcn.h>
+	<GL/glx.h>
+
+1468036026 d:\dev\uchat\gl\gl3w.h
+	"glcorearb.h"
+
+1468035935 d:\dev\uchat\gl\glcorearb.h
+	<windows.h>
+	<stddef.h>
+	<inttypes.h>
+	<inttypes.h>
+	<inttypes.h>
+	<stdint.h>
+	<stdint.h>
+	<inttypes.h>
+
+1468036905 source:d:\dev\uchat\videoinput\videoinput.cpp
+	<iostream>
+	"videoInput.h"
+	<tchar.h>
+	<dshow.h>
+	<uuids.h>
+	<aviriff.h>
+	<windows.h>
+	<process.h>
+
+1468036833 d:\dev\uchat\videoinput\videoinput.h
+	<stdlib.h>
+	<stdio.h>
+	<math.h>
+	<string.h>
+	<wchar.h>
+	<string>
+	<vector>
+	<windows.h>
+
+1469760773 source:d:\dev\uchat\imgcoder.cpp
+	<math.h>
+	<malloc.h>
+	<memory.h>
+	<stdlib.h>
+	"imgcoder.h"
+
+1471660167 d:\dev\uchat\imgcoder.h
+

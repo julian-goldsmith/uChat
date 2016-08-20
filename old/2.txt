@@ -1,0 +1,131 @@
+#include <math.h>
+#include <malloc.h>
+#include <memory.h>
+#include <stdlib.h>
+#include "imgcoder.h"
+
+#define MB_SIZE 16
+#define MB_NUM_X (640/MB_SIZE)
+#define MB_NUM_Y (480/MB_SIZE)
+#define NUMBLOCKS ((MB_NUM_X*480/MB_SIZE)/2)  /*120*/
+
+typedef struct
+{
+    unsigned char mb_x;
+    unsigned char mb_y;
+    double rmsr;
+    double rmsg;
+    double rmsb;
+    unsigned char blockData[MB_SIZE][MB_SIZE][3];
+} macroblock_t;
+
+int sortblocks(const void* val1, const void* val2)
+{
+    const macroblock_t* mb1 = (const macroblock_t*) val1;
+    const macroblock_t* mb2 = (const macroblock_t*) val2;
+
+    int compr1 = (mb1->rmsr > mb2->rmsr) ? 1 : 0;
+    int compg1 = (mb1->rmsg > mb2->rmsg) ? 1 : 0;
+    int compb1 = (mb1->rmsb > mb2->rmsb) ? 1 : 0;
+
+    int compr2 = (mb1->rmsr < mb2->rmsr) ? 1 : 0;
+    int compg2 = (mb1->rmsg < mb2->rmsg) ? 1 : 0;
+    int compb2 = (mb1->rmsb < mb2->rmsb) ? 1 : 0;
+
+    int comptotal1 = compr1 + compg1 + compb1;
+    int comptotal2 = compr2 + compg2 + compb2;
+
+    if(comptotal1 < comptotal2)
+        return -1;
+    else if(comptotal1 > comptotal2)
+        return 1;
+    else
+        return 0;
+}
+
+void calculateBlockRMS(macroblock_t* block, const unsigned char* prevFrame)
+{
+    double blockAvg[3];
+
+    for(int bly = 0; bly < MB_SIZE; bly++)
+    {
+        for(int blx = 0; blx < MB_SIZE; blx++)
+        {
+            int frameBase = 3 * ((block->mb_y * MB_SIZE + bly) * 640 + block->mb_x * MB_SIZE + blx);
+
+            double dr = block->blockData[blx][bly][0] - prevFrame[frameBase];
+            double dg = block->blockData[blx][bly][1] - prevFrame[frameBase + 1];
+            double db = block->blockData[blx][bly][2] - prevFrame[frameBase + 2];
+
+            blockAvg[0] += dr * dr;
+            blockAvg[1] += dg * dg;
+            blockAvg[2] += db * db;
+        }
+    }
+
+    block->rmsr = sqrt(blockAvg[0] / (MB_SIZE*MB_SIZE))
+    + sqrt(blockAvg[1] / (MB_SIZE*MB_SIZE))
+    + sqrt(blockAvg[2] / (MB_SIZE*MB_SIZE));
+}
+
+void buildBlock(macroblock_t* block, const unsigned char* imgIn)
+{
+    for(int blx = 0; blx < MB_SIZE; blx++)
+    {
+        for(int bly = 0; bly < MB_SIZE; bly++)
+        {
+            int frameBase = 3 * ((block->mb_y * MB_SIZE + bly) * 640 + block->mb_x * MB_SIZE + blx);
+            block->blockData[blx][bly][0] = imgIn[frameBase];
+            block->blockData[blx][bly][1] = imgIn[frameBase + 1];
+            block->blockData[blx][bly][2] = imgIn[frameBase + 2];
+        }
+    }
+}
+
+void fillInBlocks(macroblock_t blocks[MB_NUM_X][MB_NUM_Y], const unsigned char* imgIn, const unsigned char* prevFrame)
+{
+    for(int x = 0; x < MB_NUM_X; x++)
+    {
+        for(int y = 0; y < MB_NUM_Y; y++)
+        {
+            macroblock_t* block = &blocks[x][y];
+            block->mb_x = x;
+            block->mb_y = y;
+            buildBlock(block, imgIn);
+
+            calculateBlockRMS(block, prevFrame);
+        }
+    }
+}
+
+void encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, unsigned char** imgOut, unsigned int* imgOutLen)
+{
+    macroblock_t blocks[MB_NUM_X][MB_NUM_Y];
+    fillInBlocks(blocks, imgIn, prevFrame);
+    qsort(blocks, MB_NUM_X * MB_NUM_Y, sizeof(macroblock_t), sortblocks);
+
+    // store NUMBLOCKS blocks
+    *imgOutLen = NUMBLOCKS * sizeof(macroblock_t);
+    *imgOut = (unsigned char*) malloc(*imgOutLen);
+
+    memcpy(*imgOut, blocks, *imgOutLen);
+}
+
+void decodeImage(const unsigned char* prevFrame, const unsigned char* encodedIn, unsigned int encodedLen, unsigned char* frameOut)
+{
+    memcpy(frameOut, prevFrame, 3 * 640 * 480);
+
+    for(macroblock_t* block = (macroblock_t*) encodedIn; block < (macroblock_t*) (encodedIn + encodedLen); block++)
+    {
+        for(int x = 0; x < MB_SIZE; x++)
+        {
+            for(int y = 0; y < MB_SIZE; y++)
+            {
+                int frameBase = 3 * ((block->mb_y * MB_SIZE + y) * 640 + block->mb_x * MB_SIZE + x);
+                frameOut[frameBase] = block->blockData[x][y][0];
+                frameOut[frameBase + 1] = block->blockData[x][y][1];
+                frameOut[frameBase + 2] = block->blockData[x][y][2];
+            }
+        }
+    }
+}
