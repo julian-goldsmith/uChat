@@ -90,8 +90,9 @@ int main(int, char**)
 
             vi.getPixels(0, frame, true, true);
 
-            encodeImage(frame, prevframe, blocks, rmsView);
-            decodeImage(prevframe, blocks, decodedframe);
+            compressed_macroblock_t* cblocks = encodeImage(frame, prevframe, blocks, rmsView);
+            decodeImage(prevframe, cblocks, decodedframe);
+            free(cblocks);
 
             GLint last_texture;
             glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);

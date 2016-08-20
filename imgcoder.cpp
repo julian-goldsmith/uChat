@@ -2,6 +2,7 @@
 #include <malloc.h>
 #include <memory.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "imgcoder.h"
 
 int sortblocks(const void* val1, const void* val2)
@@ -77,27 +78,6 @@ void precomputeDCTMatrix()
 	if (u == 0) Cu = 1.0 / sqrt(2.0); else Cu = 1.0; \
 	if (v == 0) Cv = 1.0 / sqrt(2.0); else Cv = 1.0; \
 	}
-/*
-void dct(unsigned char pixels[MB_SIZE][MB_SIZE], double data[16][16])
-{
-	int u,v,x,y;
-
-	for (v=0; v < 16; v++)
-	for (u=0; u < 16; u++)
-	{
-		double Cu, Cv, z = 0.0;
-
-		COEFFS(Cu,Cv,u,v);
-
-		for (y=0; y<16; y++)
-		for (x=0; x<16; x++)
-		{
-			z += pixels[x][y] * dctPrecomp[u][x] * dctPrecomp[v][y];
-		}
-
-		data[v][u] = 0.125 * Cu * Cv * z;
-	}
-}*/
 
 void dct_1d(double *in, double *out, const int count)
 {
@@ -206,7 +186,7 @@ void dctBlock(macroblock_t* block)
     dctQuantize(block->blockDataDCT[2]);
 }
 
-double* rleValue(double data[MB_SIZE][MB_SIZE])
+double* rleValue(double data[MB_SIZE][MB_SIZE], int* rleSize)
 {
     // loop through the data.  if the current value is the same as the last, increment counter.  if it differs, write counter and value, then reset counter
     double* odata = (double*) calloc(MB_SIZE * MB_SIZE * 2, sizeof(double));    // resize later
@@ -227,57 +207,68 @@ double* rleValue(double data[MB_SIZE][MB_SIZE])
             {
                 odata[odatacount++] = counter;
                 odata[odatacount++] = value;
-                counter = 0.0;
+
+                counter = 1.0;
+                value = data[x][y];
             }
         }
     }
 
-    return odata;
+    *rleSize = odatacount;
+
+    return (double*) realloc(odata, sizeof(double) * odatacount);
 }
 
-void unrleValue(double data[MB_SIZE][MB_SIZE], double* rleData)
+void unrleValue(double data[MB_SIZE][MB_SIZE], double* rleData, int rleSize)
 {
     double counter = 0.0;
     int x = 0;
     int y = 0;
 
-    for(int i = 0; i < MB_SIZE * MB_SIZE; i++)
+    for(int i = 0; i < rleSize; i += 2)
     {
-        counter = rleData[i * 2];
+        counter = rleData[i];
 
         while(counter > 0.0)
         {
+            data[y][x] = rleData[i + 1];
+
             counter--;
+            x++;
 
             if(x == MB_SIZE)
             {
                 x = 0;
                 y++;
             }
-
-            data[x][y] = rleData[i * 2 + 1];
         }
     }
 }
 
-double* rleBlock(macroblock_t* block)
+void rleBlock(macroblock_t* block)
 {
-    block->rleData = rleValue(block->blockDataDCT[0]);
+    block->rleData[0] = rleValue(block->blockDataDCT[0], &block->rleSize[0]);
+    block->rleData[1] = rleValue(block->blockDataDCT[1], &block->rleSize[1]);
+    block->rleData[2] = rleValue(block->blockDataDCT[2], &block->rleSize[2]);
 }
 
-void unrleBlock(macroblock_t* block)
+void unrleBlock(compressed_macroblock_t* block, double data[3][MB_SIZE][MB_SIZE])
 {
-    unrleValue(block->blockDataDCT[0], block->rleData);
+    unrleValue(data[0], block->rleData[0], block->rleSize[0]);
+    unrleValue(data[1], block->rleData[1], block->rleSize[1]);
+    unrleValue(data[2], block->rleData[2], block->rleSize[2]);
+
+    free(block->rleData[0]);
+    free(block->rleData[1]);
+    free(block->rleData[2]);
 }
 
-void idctBlock(macroblock_t* block)
+void idctBlock(double data[3][MB_SIZE][MB_SIZE], unsigned char pixels[3][MB_SIZE][MB_SIZE])
 {
-    unsigned char pixels[3][MB_SIZE][MB_SIZE];
-
-    idct(pixels[0], block->blockDataDCT[0]);
-    idct(pixels[1], block->blockDataDCT[1]);
-    idct(pixels[2], block->blockDataDCT[2]);
-
+    idct(pixels[0], data[0]);
+    idct(pixels[1], data[1]);
+    idct(pixels[2], data[2]);
+/*
     for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
@@ -286,7 +277,7 @@ void idctBlock(macroblock_t* block)
             block->blockData[x][y][1] = pixels[1][x][y];
             block->blockData[x][y][2] = pixels[2][x][y];
         }
-    }
+    }*/
 }
 
 void fillInBlocks(macroblock_t* blocks, const unsigned char* imgIn, const unsigned char* prevFrame)
@@ -341,43 +332,78 @@ void showRMS(const macroblock_t* blocks, unsigned char* rmsView)
     }
 }
 
-void encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView)
+void convertBlocksToCBlocks(macroblock_t* blocks, compressed_macroblock_t* cblocks)
+{
+    for(int i = 0; i < NUMBLOCKS; i++)
+    {
+        macroblock_t* block = &blocks[i];
+        compressed_macroblock_t* cblock = &cblocks[i];
+
+        cblock->mb_x = block->mb_x;
+        cblock->mb_y = block->mb_y;
+        cblock->rleData[0] = block->rleData[0];
+        cblock->rleData[1] = block->rleData[1];
+        cblock->rleData[2] = block->rleData[2];
+        cblock->rleSize[0] = block->rleSize[0];
+        cblock->rleSize[1] = block->rleSize[1];
+        cblock->rleSize[2] = block->rleSize[2];
+    }
+}
+
+compressed_macroblock_t* encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView)
 {
     fillInBlocks(blocks, imgIn, prevFrame);
     qsort(blocks, MB_NUM_X * MB_NUM_Y, sizeof(macroblock_t), sortblocks);
     dctBlocks(blocks);
 
     showRMS(blocks, rmsView);
+
+    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) calloc(NUMBLOCKS, sizeof(compressed_macroblock_t));
+    convertBlocksToCBlocks(blocks, cblocks);
+    return cblocks;
 }
 
-void decodeImage(const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* frameOut)
+void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks, unsigned char* frameOut)
 {
     memcpy(frameOut, prevFrame, 3 * 640 * 480);
 
-    for(macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
+    for(compressed_macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
     {
+        double data[3][MB_SIZE][MB_SIZE];
+        unsigned char pixels[3][MB_SIZE][MB_SIZE];
+
         // clear for testing
         for(int x = 0; x < MB_SIZE; x++)
         {
             for(int y = 0; y < MB_SIZE; y++)
             {
-                block->blockData[x][y][0] = 0;
-                block->blockData[x][y][1] = 0;
-                block->blockData[x][y][2] = 0;
+                pixels[0][x][y] = 0;
+                pixels[1][x][y] = 0;
+                pixels[2][x][y] = 0;
             }
         }
 
-        unrleBlock(block);
-        idctBlock(block);
+        for(int x = 0; x < MB_SIZE; x++)
+        {
+            for(int y = 0; y < MB_SIZE; y++)
+            {
+                data[0][x][y] = 0;
+                data[1][x][y] = 0;
+                data[2][x][y] = 0;
+            }
+        }
+
+        unrleBlock(block, data);
+        idctBlock(data, pixels);
 
         for(int x = 0; x < MB_SIZE; x++)
         {
             for(int y = 0; y < MB_SIZE; y++)
             {
                 int frameBase = 3 * ((block->mb_y * MB_SIZE + y) * 640 + block->mb_x * MB_SIZE + x);
-                frameOut[frameBase] = block->blockData[x][y][0];
-                frameOut[frameBase + 1] = block->blockData[x][y][1];
-                frameOut[frameBase + 2] = block->blockData[x][y][2];
+                frameOut[frameBase] = pixels[0][x][y];
+                frameOut[frameBase + 1] = pixels[1][x][y];
+                frameOut[frameBase + 2] = pixels[2][x][y];
             }
         }
     }

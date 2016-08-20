@@ -13,11 +13,20 @@ typedef struct
     double rms;
     unsigned char blockData[MB_SIZE][MB_SIZE][3];
     double blockDataDCT[3][MB_SIZE][MB_SIZE];
-    double* rleData;
+    double* rleData[3];
+    int rleSize[3];
 } macroblock_t;
 
-void encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView);
-void decodeImage(const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* frameOut);
+typedef struct
+{
+    unsigned char mb_x;
+    unsigned char mb_y;
+    int rleSize[3];
+    double* rleData[3];
+} compressed_macroblock_t;
+
+compressed_macroblock_t* encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView);
+void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks, unsigned char* frameOut);
 void precomputeDCTMatrix();
 
 #endif // IMGCODER_H_INCLUDED
