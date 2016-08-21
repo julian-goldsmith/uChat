@@ -74,118 +74,197 @@ void precomputeDCTMatrix()
     }
 }
 
-#define COEFFS(Cu,Cv,u,v) { \
-	if (u == 0) Cu = 1.0 / sqrt(2.0); else Cu = 1.0; \
-	if (v == 0) Cv = 1.0 / sqrt(2.0); else Cv = 1.0; \
-	}
-
-void dct_1d(double *in, double *out, const int count)
+void dct3_1d(double in[MB_SIZE][4], double out[MB_SIZE][4])
 {
-	int x, u;
-
-	for (u=0; u < count; u++)
+	for (int u = 0; u < MB_SIZE; u++)
 	{
-		double z = 0;
+		double z[4];
 
-		for (x=0; x < count; x++)
+		z[0] = 0.0;
+		z[1] = 0.0;
+		z[2] = 0.0;
+		z[3] = 0.0;
+
+		for (int x = 0; x < MB_SIZE; x++)
 		{
-			z += in[x] * dctPrecomp[u][x];
+			z[0] += in[x][0] * dctPrecomp[u][x];
+			z[1] += in[x][0] * dctPrecomp[u][x];
+			z[2] += in[x][0] * dctPrecomp[u][x];
+			z[3] += in[x][0] * dctPrecomp[u][x];
 		}
 
-		if (u == 0) z *= 1.0 / sqrt(2.0);
-		out[u] = z / 4.0;
+		if (u == 0)
+        {
+            z[0] *= 1.0 / sqrt(2.0);
+            z[1] *= 1.0 / sqrt(2.0);
+            z[2] *= 1.0 / sqrt(2.0);
+            z[3] *= 1.0 / sqrt(2.0);
+        }
+
+		out[u][0] = z[0] / 4.0;
+		out[u][1] = z[1] / 4.0;
+		out[u][2] = z[2] / 4.0;
+		out[u][3] = z[3] / 4.0;
 	}
 }
 
-void dct(unsigned char pixels[MB_SIZE][MB_SIZE], double data[16][16])
+void dct(double pixels[MB_SIZE][MB_SIZE][4], double data[MB_SIZE][MB_SIZE][4])
 {
-	int i,j;
-	double in[16], out[16], rows[16][16];
+	double in[MB_SIZE][4] __attribute__((aligned(16)));
+	double out[MB_SIZE][4]  __attribute__((aligned(16)));
+	double rows[MB_SIZE][MB_SIZE][4]  __attribute__((aligned(16)));
 
 	/* transform rows */
-	for (j=0; j<16; j++)
+	for (int j = 0; j<MB_SIZE; j++)
 	{
-		for (i=0; i<16; i++)
-			in[i] = pixels[i][j];
-		dct_1d(in, out, 16);
-		for (i=0; i<16; i++) rows[j][i] = out[i];
+		for (int i = 0; i < MB_SIZE; i++)
+        {
+			in[i][0] = pixels[i][j][0];
+			in[i][1] = pixels[i][j][1];
+			in[i][2] = pixels[i][j][2];
+			in[i][3] = pixels[i][j][3];
+        }
+
+		dct3_1d(in, out);
+
+		for (int i = 0; i < MB_SIZE; i++)
+		{
+            rows[j][i][0] = out[i][0];
+            rows[j][i][1] = out[i][1];
+            rows[j][i][2] = out[i][2];
+            rows[j][i][3] = out[i][3];
+		}
 	}
 
 	/* transform columns */
-	for (j=0; j<16; j++)
+	for (int j = 0; j < MB_SIZE; j++)
 	{
-		for (i=0; i<16; i++)
-			in[i] = rows[i][j];
-		dct_1d(in, out, 16);
-		for (i=0; i<16; i++) data[i][j] = out[i];
+		for (int i = 0; i < MB_SIZE; i++)
+        {
+			in[i][0] = rows[i][j][0];
+			in[i][1] = rows[i][j][1];
+			in[i][2] = rows[i][j][2];
+			in[i][3] = rows[i][j][3];
+        }
+
+		dct3_1d(in, out);
+
+		for (int i = 0; i < MB_SIZE; i++)
+        {
+            data[i][j][0] = out[i][0];
+            data[i][j][1] = out[i][1];
+            data[i][j][2] = out[i][2];
+            data[i][j][3] = out[i][3];
+        }
 	}
 }
 
-void dctQuantize(double data[MB_SIZE][MB_SIZE])
+void dctQuantize(double data[MB_SIZE][MB_SIZE][4])
 {
     for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            if(fabs(data[x][y]) < 10.0)
+            if(fabs(data[x][y][0]) < 10.0)
             {
-                data[x][y] = 0;
+                data[x][y][0] = 0;
+            }
+
+            if(fabs(data[x][y][1]) < 10.0)
+            {
+                data[x][y][1] = 0;
+            }
+
+            if(fabs(data[x][y][2]) < 10.0)
+            {
+                data[x][y][2] = 0;
+            }
+
+            // this one is unnecessary
+            if(fabs(data[x][y][3]) < 10.0)
+            {
+                data[x][y][3] = 0;
             }
         }
     }
 }
 
-void idct(unsigned char pixels[MB_SIZE][MB_SIZE], double data[16][16])
+#define COEFFS(Cu,Cv,u,v) { \
+	if (u == 0) Cu = 1.0 / sqrt(2.0); else Cu = 1.0; \
+	if (v == 0) Cv = 1.0 / sqrt(2.0); else Cv = 1.0; \
+	}
+
+void idct(double pixels[MB_SIZE][MB_SIZE][3], double data[MB_SIZE][MB_SIZE][4])
 {
+    // FIXME: convert to 1d, like the other one
 	int u,v,x,y;
 
 	/* iDCT */
-	for (y=0; y < 16; y++)
-	for (x=0; x < 16; x++)
+	for (y=0; y < MB_SIZE; y++)
+	for (x=0; x < MB_SIZE; x++)
 	{
-		double z = 0.0;
+		double z[4];
 
-		for (v=0; v < 16; v++)
-		for (u=0; u < 16; u++)
+		z[0] = 0.0;
+		z[1] = 0.0;
+		z[2] = 0.0;
+		z[3] = 0.0;
+
+		for (v=0; v < MB_SIZE; v++)
+		for (u=0; u < MB_SIZE; u++)
 		{
 			double Cu, Cv;
 
 			COEFFS(Cu,Cv,u,v);
 
-			z += Cu * Cv * data[v][u] * dctPrecomp[u][x] * dctPrecomp[v][y];
+			z[0] += Cu * Cv * data[v][u][0] * dctPrecomp[u][x] * dctPrecomp[v][y];
+			z[1] += Cu * Cv * data[v][u][1] * dctPrecomp[u][x] * dctPrecomp[v][y];
+			z[2] += Cu * Cv * data[v][u][2] * dctPrecomp[u][x] * dctPrecomp[v][y];
+			z[3] += Cu * Cv * data[v][u][3] * dctPrecomp[u][x] * dctPrecomp[v][y];
 		}
 
-		z /= 4.0;
-		if (z > 255.0) z = 255.0;
-		if (z < 0) z = 0.0;
+		z[0] /= 4.0;
+		z[1] /= 4.0;
+		z[2] /= 4.0;
+		z[3] /= 4.0;
 
-		pixels[x][y] = (unsigned char) z;
+		if (z[0] > 255.0) z[0] = 255.0;
+		if (z[1] > 255.0) z[1] = 255.0;
+		if (z[2] > 255.0) z[2] = 255.0;
+		if (z[3] > 255.0) z[3] = 255.0;
+
+		if (z[0] < 0) z[0] = 0.0;
+		if (z[1] < 0) z[1] = 0.0;
+		if (z[2] < 0) z[2] = 0.0;
+		if (z[3] < 0) z[3] = 0.0;
+
+		pixels[x][y][0] = z[0];
+		pixels[x][y][1] = z[1];
+		pixels[x][y][2] = z[2];
+		//pixels[x][y][3] = z[3];
 	}
 }
 
 void dctBlock(macroblock_t* block)
 {
-    unsigned char pixels[3][MB_SIZE][MB_SIZE];
+    double pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
 
     for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            pixels[0][x][y] = block->blockData[x][y][0];
-            pixels[1][x][y] = block->blockData[x][y][1];
-            pixels[2][x][y] = block->blockData[x][y][2];
+            pixels[x][y][0] = block->blockData[x][y][0];
+            pixels[x][y][1] = block->blockData[x][y][1];
+            pixels[x][y][2] = block->blockData[x][y][2];
+            pixels[x][y][3] = 0.0;
         }
     }
 
-    dct(pixels[0], block->blockDataDCT[0]);
-    dct(pixels[1], block->blockDataDCT[1]);
-    dct(pixels[2], block->blockDataDCT[2]);
+    dct(pixels, block->blockDataDCT);
 
-    dctQuantize(block->blockDataDCT[0]);
-    dctQuantize(block->blockDataDCT[1]);
-    dctQuantize(block->blockDataDCT[2]);
+    dctQuantize(block->blockDataDCT);
 }
-
+/*
 double* rleValue(double data[MB_SIZE][MB_SIZE], int* rleSize)
 {
     // loop through the data.  if the current value is the same as the last, increment counter.  if it differs, write counter and value, then reset counter
@@ -262,12 +341,11 @@ void unrleBlock(compressed_macroblock_t* block, double data[3][MB_SIZE][MB_SIZE]
     free(block->rleData[1]);
     free(block->rleData[2]);
 }
+*/
 
-void idctBlock(double data[3][MB_SIZE][MB_SIZE], unsigned char pixels[3][MB_SIZE][MB_SIZE])
+void idctBlock(double data[MB_SIZE][MB_SIZE][4], double pixels[MB_SIZE][MB_SIZE][3])
 {
-    idct(pixels[0], data[0]);
-    idct(pixels[1], data[1]);
-    idct(pixels[2], data[2]);
+    idct(pixels, data);
 }
 
 void fillInBlocks(macroblock_t* blocks, const unsigned char* imgIn, const unsigned char* prevFrame)
@@ -292,7 +370,7 @@ void dctBlocks(macroblock_t *blocks)
     for(macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
     {
         dctBlock(block);
-        rleBlock(block);
+        //rleBlock(block);
     }
 }
 
@@ -331,12 +409,21 @@ void convertBlocksToCBlocks(macroblock_t* blocks, compressed_macroblock_t* cbloc
 
         cblock->mb_x = block->mb_x;
         cblock->mb_y = block->mb_y;
-        cblock->rleData[0] = block->rleData[0];
+        /*cblock->rleData[0] = block->rleData[0];
         cblock->rleData[1] = block->rleData[1];
         cblock->rleData[2] = block->rleData[2];
         cblock->rleSize[0] = block->rleSize[0];
         cblock->rleSize[1] = block->rleSize[1];
-        cblock->rleSize[2] = block->rleSize[2];
+        cblock->rleSize[2] = block->rleSize[2];*/
+
+        for(int x = 0; x < MB_SIZE; x++)
+        for(int y = 0; y < MB_SIZE; y++)
+        {
+            cblock->blockDataDCT[x][y][0] = block->blockDataDCT[x][y][0];
+            cblock->blockDataDCT[x][y][1] = block->blockDataDCT[x][y][1];
+            cblock->blockDataDCT[x][y][2] = block->blockDataDCT[x][y][2];
+            cblock->blockDataDCT[x][y][3] = block->blockDataDCT[x][y][3];
+        }
     }
 }
 
@@ -360,7 +447,7 @@ void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks
     for(compressed_macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
     {
         double data[3][MB_SIZE][MB_SIZE];
-        unsigned char pixels[3][MB_SIZE][MB_SIZE];
+        double pixels[MB_SIZE][MB_SIZE][3];
 
         // clear data, so missing values are 0
         for(int x = 0; x < MB_SIZE; x++)
@@ -373,17 +460,18 @@ void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks
             }
         }
 
-        unrleBlock(block, data);
-        idctBlock(data, pixels);
+        //unrleBlock(block, data);
+        //idctBlock(data, pixels);
+        idctBlock(block->blockDataDCT, pixels);
 
         for(int x = 0; x < MB_SIZE; x++)
         {
             for(int y = 0; y < MB_SIZE; y++)
             {
                 int frameBase = 3 * ((block->mb_y * MB_SIZE + y) * 640 + block->mb_x * MB_SIZE + x);
-                frameOut[frameBase] = pixels[0][x][y];
-                frameOut[frameBase + 1] = pixels[1][x][y];
-                frameOut[frameBase + 2] = pixels[2][x][y];
+                frameOut[frameBase] = pixels[x][y][0];
+                frameOut[frameBase + 1] = pixels[x][y][1];
+                frameOut[frameBase + 2] = pixels[x][y][2];
             }
         }
     }
