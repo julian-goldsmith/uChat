@@ -268,16 +268,6 @@ void idctBlock(double data[3][MB_SIZE][MB_SIZE], unsigned char pixels[3][MB_SIZE
     idct(pixels[0], data[0]);
     idct(pixels[1], data[1]);
     idct(pixels[2], data[2]);
-/*
-    for(int x = 0; x < MB_SIZE; x++)
-    {
-        for(int y = 0; y < MB_SIZE; y++)
-        {
-            block->blockData[x][y][0] = pixels[0][x][y];
-            block->blockData[x][y][1] = pixels[1][x][y];
-            block->blockData[x][y][2] = pixels[2][x][y];
-        }
-    }*/
 }
 
 void fillInBlocks(macroblock_t* blocks, const unsigned char* imgIn, const unsigned char* prevFrame)
@@ -372,17 +362,7 @@ void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks
         double data[3][MB_SIZE][MB_SIZE];
         unsigned char pixels[3][MB_SIZE][MB_SIZE];
 
-        // clear for testing
-        for(int x = 0; x < MB_SIZE; x++)
-        {
-            for(int y = 0; y < MB_SIZE; y++)
-            {
-                pixels[0][x][y] = 0;
-                pixels[1][x][y] = 0;
-                pixels[2][x][y] = 0;
-            }
-        }
-
+        // clear data, so missing values are 0
         for(int x = 0; x < MB_SIZE; x++)
         {
             for(int y = 0; y < MB_SIZE; y++)
