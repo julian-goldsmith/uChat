@@ -76,8 +76,6 @@ void precomputeDCTMatrix()
     }
 }
 
-float idctPrecomp[MB_SIZE][MB_SIZE][MB_SIZE][MB_SIZE];
-
 void dct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE])
 {
 	for (int u = 0; u < MB_SIZE; u++)
@@ -185,7 +183,7 @@ void dctBlock(macroblock_t* block)
     dct(pixels, block->blockDataDCT);
     dctQuantize(block->blockDataDCT);
 }
-
+/*
 void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 {
 	for (int y = 0; y < MB_SIZE; y++)
@@ -210,18 +208,76 @@ void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 		_mm_storeu_ps(pixels[x][y], z);
 	}
 }
-
-void precomputeIDCTMatrix()
+*/
+void idct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE])
 {
-    for (int y = 0; y < MB_SIZE; y++)
-	for (int x = 0; x < MB_SIZE; x++)
+	for (int u = 0; u < MB_SIZE; u++)
 	{
-		for (int v=0; v < MB_SIZE; v++)
-		for (int u=0; u < MB_SIZE; u++)
+		__m128 z = _mm_set1_ps(0.0f);
+
+		for (int x = 0; x < MB_SIZE; x++)
 		{
-		    idctPrecomp[v][y][u][x] = dctPrecomp[v][y] * dctPrecomp[u][x];
+            if (x == 0)
+            {
+                z = _mm_mul_ps(z, _mm_set1_ps(1.0f / sqrtf(2.0)));
+            }
+
+            z = _mm_add_ps(z, _mm_mul_ps(in[x], _mm_set1_ps(dctPrecomp[x][u])));
+		}
+
+        out[u] = _mm_mul_ps(z, _mm_set1_ps(0.25f));
+	}
+}
+
+void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
+{
+	__m128 in[MB_SIZE] __attribute__((aligned(16)));
+	__m128 out[MB_SIZE] __attribute__((aligned(16)));
+	__m128 rows[MB_SIZE][MB_SIZE] __attribute__((aligned(16)));
+
+	/* transform rows */
+	for (int j = 0; j<MB_SIZE; j++)
+	{
+		for (int i = 0; i < MB_SIZE; i++)
+        {
+			in[i] = _mm_load_ps(data[i][j]);
+        }
+
+		idct3_1d(in, out);
+
+		for (int i = 0; i < MB_SIZE; i++)
+		{
+            rows[j][i] = out[i];
 		}
 	}
+
+	/* transform columns */
+	for (int j = 0; j < MB_SIZE; j++)
+	{
+		for (int i = 0; i < MB_SIZE; i++)
+        {
+			in[i] = rows[i][j];
+        }
+
+		idct3_1d(in, out);
+
+		for (int i = 0; i < MB_SIZE; i++)
+        {
+            _mm_store_ps(pixels[i][j], out[i]);
+        }
+	}
+
+    // FIXME: this fixes an error in idct3_1d, fix there instead
+	for(int x = 0; x < MB_SIZE; x++)
+    {
+        for(int y = 0; y < MB_SIZE; y++)
+        {
+            pixels[x][y][0] *= 2.0f;
+            pixels[x][y][1] *= 2.0f;
+            pixels[x][y][2] *= 2.0f;
+            pixels[x][y][3] *= 2.0f;
+        }
+    }
 }
 
 void idctBlock(float data[MB_SIZE][MB_SIZE][4], float pixels[MB_SIZE][MB_SIZE][4])

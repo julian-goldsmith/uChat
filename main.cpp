@@ -71,7 +71,6 @@ int main(int, char**)
     glGenTextures(1, &rmsView_id);
 
     precomputeDCTMatrix();
-    precomputeIDCTMatrix();
 
     // Main loop
     bool done = false;
