@@ -164,61 +164,6 @@ void dctQuantize(float data[MB_SIZE][MB_SIZE][4])
     }
 }
 
-#define COEFFS(Cu,Cv,u,v) { \
-	if (u == 0) Cu = 1.0 / sqrt(2.0); else Cu = 1.0; \
-	if (v == 0) Cv = 1.0 / sqrt(2.0); else Cv = 1.0; \
-	}
-
-void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
-{
-    // FIXME: convert to 1d, like the other one
-
-	/* iDCT */
-	for (int y = 0; y < MB_SIZE; y++)
-	for (int x = 0; x < MB_SIZE; x++)
-	{
-		float z[4];
-
-		z[0] = 0.0;
-		z[1] = 0.0;
-		z[2] = 0.0;
-		z[3] = 0.0;
-
-		for (int v=0; v < MB_SIZE; v++)
-		for (int u=0; u < MB_SIZE; u++)
-		{
-			float Cu, Cv;
-
-			COEFFS(Cu,Cv,u,v);
-
-			z[0] += Cu * Cv * data[v][u][0] * dctPrecomp[u][x] * dctPrecomp[v][y];
-			z[1] += Cu * Cv * data[v][u][1] * dctPrecomp[u][x] * dctPrecomp[v][y];
-			z[2] += Cu * Cv * data[v][u][2] * dctPrecomp[u][x] * dctPrecomp[v][y];
-			z[3] += Cu * Cv * data[v][u][3] * dctPrecomp[u][x] * dctPrecomp[v][y];
-		}
-
-		z[0] /= 4.0;
-		z[1] /= 4.0;
-		z[2] /= 4.0;
-		z[3] /= 4.0;
-
-		if (z[0] > 255.0) z[0] = 255.0;
-		if (z[1] > 255.0) z[1] = 255.0;
-		if (z[2] > 255.0) z[2] = 255.0;
-		if (z[3] > 255.0) z[3] = 255.0;
-
-		if (z[0] < 0) z[0] = 0.0;
-		if (z[1] < 0) z[1] = 0.0;
-		if (z[2] < 0) z[2] = 0.0;
-		if (z[3] < 0) z[3] = 0.0;
-
-		pixels[x][y][0] = z[0];
-		pixels[x][y][1] = z[1];
-		pixels[x][y][2] = z[2];
-		pixels[x][y][3] = z[3];
-	}
-}
-
 void dctBlock(macroblock_t* block)
 {
     float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
@@ -239,8 +184,45 @@ void dctBlock(macroblock_t* block)
     dctQuantize(block->blockDataDCT);
 }
 
+void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
+{
+	for (int y = 0; y < MB_SIZE; y++)
+	for (int x = 0; x < MB_SIZE; x++)
+	{
+		__m128 z = _mm_set1_ps(0.0);
+
+		for (int v=0; v < MB_SIZE; v++)
+		for (int u=0; u < MB_SIZE; u++)
+		{
+			__m128 Cu = _mm_set1_ps((u == 0) ? 1.0f / sqrtf(2.0f) : 1.0f);
+			__m128 Cv = _mm_set1_ps((v == 0) ? 1.0f / sqrtf(2.0f) : 1.0f);
+
+			z = _mm_add_ps(z,
+                _mm_mul_ps(_mm_set1_ps(dctPrecomp[v][y]),
+                    _mm_mul_ps(_mm_set1_ps(dctPrecomp[u][x]),
+                        _mm_mul_ps(_mm_loadu_ps(data[v][u]), _mm_mul_ps(Cu, Cv)))));
+		}
+
+		z = _mm_mul_ps(z, _mm_set1_ps(0.25f));
+		z = _mm_min_ps(_mm_max_ps(z, _mm_set1_ps(0.0f)), _mm_set1_ps(255.0f));  // clamp to max 255, min 0
+
+		_mm_storeu_ps(pixels[x][y], z);
+	}
+}
+
 void idctBlock(float data[MB_SIZE][MB_SIZE][4], float pixels[MB_SIZE][MB_SIZE][4])
 {
+    for(int x = 0; x < MB_SIZE; x++)
+    {
+        for(int y = 0; y < MB_SIZE; y++)
+        {
+            pixels[x][y][0] = 0.0;
+            pixels[x][y][1] = 0.0;
+            pixels[x][y][2] = 0.0;
+            pixels[x][y][3] = 0.0;
+        }
+    }
+
     idct(pixels, data);
 }
 
@@ -281,6 +263,7 @@ void showRMS(const macroblock_t* blocks, unsigned char* rmsView)
             rmsMax = block->rms;
     }
 
+    int bnum = 0;
     for(const macroblock_t* block = blocks; block < blocks + (MB_NUM_X * MB_NUM_Y); block++)
     {
         for(int x = 0; x < MB_SIZE; x++)
@@ -288,11 +271,23 @@ void showRMS(const macroblock_t* blocks, unsigned char* rmsView)
             for(int y = 0; y < MB_SIZE; y++)
             {
                 int frameBase = 3 * ((block->mb_y * MB_SIZE + y) * 640 + block->mb_x * MB_SIZE + x);
-                rmsView[frameBase] = 256 * (block->rms / rmsMax);
-                rmsView[frameBase + 1] = 256 * (block->rms / rmsMax);
-                rmsView[frameBase + 2] = 256 * (block->rms / rmsMax);
+
+                if(bnum < NUMBLOCKS)
+                {
+                    rmsView[frameBase] = 0;
+                    rmsView[frameBase + 1] = 256 * (block->rms / rmsMax);
+                    rmsView[frameBase + 2] = 0;
+                }
+                else
+                {
+                    rmsView[frameBase] = 256 * (block->rms / rmsMax);
+                    rmsView[frameBase + 1] = 256 * (block->rms / rmsMax);
+                    rmsView[frameBase + 2] = 256 * (block->rms / rmsMax);
+                }
             }
         }
+
+        bnum++;
     }
 }
 
