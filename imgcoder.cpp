@@ -3,6 +3,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <xmmintrin.h>
 #include "imgcoder.h"
 
 int sortblocks(const void* val1, const void* val2)
@@ -88,9 +89,9 @@ void dct3_1d(double in[MB_SIZE][4], double out[MB_SIZE][4])
 		for (int x = 0; x < MB_SIZE; x++)
 		{
 			z[0] += in[x][0] * dctPrecomp[u][x];
-			z[1] += in[x][0] * dctPrecomp[u][x];
-			z[2] += in[x][0] * dctPrecomp[u][x];
-			z[3] += in[x][0] * dctPrecomp[u][x];
+			z[1] += in[x][1] * dctPrecomp[u][x];
+			z[2] += in[x][2] * dctPrecomp[u][x];
+			z[3] += in[x][3] * dctPrecomp[u][x];
 		}
 
 		if (u == 0)
@@ -194,7 +195,7 @@ void dctQuantize(double data[MB_SIZE][MB_SIZE][4])
 	if (v == 0) Cv = 1.0 / sqrt(2.0); else Cv = 1.0; \
 	}
 
-void idct(double pixels[MB_SIZE][MB_SIZE][3], double data[MB_SIZE][MB_SIZE][4])
+void idct(double pixels[MB_SIZE][MB_SIZE][4], double data[MB_SIZE][MB_SIZE][4])
 {
     // FIXME: convert to 1d, like the other one
 	int u,v,x,y;
@@ -241,7 +242,7 @@ void idct(double pixels[MB_SIZE][MB_SIZE][3], double data[MB_SIZE][MB_SIZE][4])
 		pixels[x][y][0] = z[0];
 		pixels[x][y][1] = z[1];
 		pixels[x][y][2] = z[2];
-		//pixels[x][y][3] = z[3];
+		pixels[x][y][3] = z[3];
 	}
 }
 
@@ -343,7 +344,7 @@ void unrleBlock(compressed_macroblock_t* block, double data[3][MB_SIZE][MB_SIZE]
 }
 */
 
-void idctBlock(double data[MB_SIZE][MB_SIZE][4], double pixels[MB_SIZE][MB_SIZE][3])
+void idctBlock(double data[MB_SIZE][MB_SIZE][4], double pixels[MB_SIZE][MB_SIZE][4])
 {
     idct(pixels, data);
 }
@@ -446,11 +447,11 @@ void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks
 
     for(compressed_macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
     {
-        double data[3][MB_SIZE][MB_SIZE];
-        double pixels[MB_SIZE][MB_SIZE][3];
+        //double data[3][MB_SIZE][MB_SIZE];
+        double pixels[MB_SIZE][MB_SIZE][4];
 
         // clear data, so missing values are 0
-        for(int x = 0; x < MB_SIZE; x++)
+        /*for(int x = 0; x < MB_SIZE; x++)
         {
             for(int y = 0; y < MB_SIZE; y++)
             {
@@ -458,7 +459,7 @@ void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks
                 data[1][x][y] = 0;
                 data[2][x][y] = 0;
             }
-        }
+        }*/
 
         //unrleBlock(block, data);
         //idctBlock(data, pixels);
