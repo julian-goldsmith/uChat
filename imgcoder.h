@@ -13,17 +13,16 @@ typedef struct
     float rms;
     unsigned char blockData[MB_SIZE][MB_SIZE][3];
     float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
-    float* rleData[3];
-    int rleSize[3];
+    int rleSize;
+    float* rleData;
 } macroblock_t;
 
 typedef struct
 {
     unsigned char mb_x;
     unsigned char mb_y;
-    int rleSize[3];
-    float* rleData[3];
-    float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
+    int rleSize;
+    float* rleData;
 } compressed_macroblock_t;
 
 compressed_macroblock_t* encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView);
