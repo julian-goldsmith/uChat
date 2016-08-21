@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1471667349 source:d:\dev\uchat\main.cpp
+1471821588 source:d:\dev\uchat\main.cpp
 	"imgui/imgui.h"
 	"imgui/imgui_impl_sdl_gl3.h"
 	<stdio.h>
@@ -128,7 +128,7 @@
 	<vector>
 	<windows.h>
 
-1471760982 source:d:\dev\uchat\imgcoder.cpp
+1471821539 source:d:\dev\uchat\imgcoder.cpp
 	<math.h>
 	<malloc.h>
 	<memory.h>
@@ -138,5 +138,5 @@
 	<xmmintrin.h>
 	"imgcoder.h"
 
-1471759037 d:\dev\uchat\imgcoder.h
+1471821594 d:\dev\uchat\imgcoder.h
 

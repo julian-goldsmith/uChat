@@ -76,6 +76,8 @@ void precomputeDCTMatrix()
     }
 }
 
+float idctPrecomp[MB_SIZE][MB_SIZE][MB_SIZE][MB_SIZE];
+
 void dct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE])
 {
 	for (int u = 0; u < MB_SIZE; u++)
@@ -189,24 +191,36 @@ void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 	for (int y = 0; y < MB_SIZE; y++)
 	for (int x = 0; x < MB_SIZE; x++)
 	{
-		__m128 z = _mm_set1_ps(0.0);
+		__m128 z = _mm_set1_ps(0.0f);
 
 		for (int v=0; v < MB_SIZE; v++)
 		for (int u=0; u < MB_SIZE; u++)
 		{
-			__m128 Cu = _mm_set1_ps((u == 0) ? 0.5f / sqrtf(2.0f) : 0.5f);
-			__m128 Cv = _mm_set1_ps((v == 0) ? 0.5f / sqrtf(2.0f) : 0.5f);
+			__m128 Cu = _mm_set1_ps((u == 0) ? 0.353553390f : 0.5f);        // 0.5f / sqrtf(2.0f)
+			__m128 Cv = _mm_set1_ps((v == 0) ? 0.353553390f : 0.5f);
 
             // z += dctPrecomp[v][y] * dctPrecomp[u][x] * data[v][u] * Cu * Cv
 			z = _mm_add_ps(z,
-                _mm_mul_ps(_mm_set1_ps(dctPrecomp[v][y]),
-                    _mm_mul_ps(_mm_set1_ps(dctPrecomp[u][x]),
-                        _mm_mul_ps(_mm_loadu_ps(data[v][u]), _mm_mul_ps(Cu, Cv)))));
+                _mm_mul_ps(_mm_set1_ps(idctPrecomp[v][y][u][x]),
+                    _mm_mul_ps(_mm_load_ps(data[v][u]), _mm_mul_ps(Cu, Cv))));
 		}
 
 		z = _mm_min_ps(_mm_max_ps(z, _mm_set1_ps(0.0f)), _mm_set1_ps(255.0f));  // clamp to max 255, min 0
 
 		_mm_storeu_ps(pixels[x][y], z);
+	}
+}
+
+void precomputeIDCTMatrix()
+{
+    for (int y = 0; y < MB_SIZE; y++)
+	for (int x = 0; x < MB_SIZE; x++)
+	{
+		for (int v=0; v < MB_SIZE; v++)
+		for (int u=0; u < MB_SIZE; u++)
+		{
+		    idctPrecomp[v][y][u][x] = dctPrecomp[v][y] * dctPrecomp[u][x];
+		}
 	}
 }
 
@@ -386,8 +400,6 @@ void convertBlocksToCBlocks(macroblock_t* blocks, compressed_macroblock_t* cbloc
         cblock->mb_y = block->mb_y;
         cblock->rleData = block->rleData;
         cblock->rleSize = block->rleSize;
-
-        assert((cblock->rleSize % 4) == 0);
     }
 }
 
