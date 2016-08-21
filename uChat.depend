@@ -128,13 +128,14 @@
 	<vector>
 	<windows.h>
 
-1471667422 source:d:\dev\uchat\imgcoder.cpp
+1471752245 source:d:\dev\uchat\imgcoder.cpp
 	<math.h>
 	<malloc.h>
 	<memory.h>
 	<stdlib.h>
 	<assert.h>
+	<xmmintrin.h>
 	"imgcoder.h"
 
-1471749661 d:\dev\uchat\imgcoder.h
+1471750587 d:\dev\uchat\imgcoder.h
 
