@@ -1,16 +1,17 @@
 // ImGui - standalone example application for SDL2 + OpenGL
 // If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_sdl_gl3.h"
 #include <stdio.h>
-#include "GL/gl3w.h"
 #include <SDL2/SDL.h>
 #include <vector>
 #include <string>
-#include "videoInput/videoInput.h"
 #include <fstream>
 #include <iostream>
+#include <winsock2.h>
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_sdl_gl3.h"
+#include "GL/gl3w.h"
+#include "videoInput/videoInput.h"
 #include "imgcoder.h"
 #include "dct.h"
 
@@ -75,6 +76,34 @@ int main(int, char**)
 
     int totalSize = 0;
 
+	WSADATA wsa;
+	SOCKET s;
+
+	if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
+	{
+		printf("Failed. Error Code : %d",WSAGetLastError());
+		return 1;
+	}
+
+	if((s = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
+	{
+		printf("Could not create socket : %d" , WSAGetLastError());
+		return 1;
+	}
+
+	struct sockaddr_in server;
+
+	server.sin_addr.s_addr = inet_addr("108.61.193.139");
+	server.sin_family = AF_INET;
+	server.sin_port = htons(7777);
+
+	//Connect to remote server
+	if (connect(s, (struct sockaddr *)&server , sizeof(server)) < 0)
+	{
+		printf("connect error\n");
+		return 1;
+	}
+
     // Main loop
     bool done = false;
     while (!done)
@@ -95,6 +124,11 @@ int main(int, char**)
 
             unsigned char* encodedImage = ic_encode_image(frame, prevframe, rmsView, &totalSize);
             ic_decode_image(prevframe, encodedImage, decodedframe);
+            if(send(s, (const char*) encodedImage, totalSize, 0) < 0)
+            {
+                printf("Send failed\n");
+                return 1;
+            }
             free(encodedImage);
 
             GLint last_texture;

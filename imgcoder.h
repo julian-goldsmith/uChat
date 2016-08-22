@@ -4,7 +4,7 @@
 #define MB_SIZE 16
 #define MB_NUM_X (640/MB_SIZE)
 #define MB_NUM_Y (480/MB_SIZE)
-#define NUMBLOCKS ((MB_NUM_X*MB_NUM_Y) / 6)  /*120*/
+#define NUMBLOCKS ((MB_NUM_X*MB_NUM_Y) / 16)  /*120*/
 
 typedef struct
 {

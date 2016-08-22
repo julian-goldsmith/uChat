@@ -77,7 +77,7 @@ void _dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 
 void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4])
 {
-    const float quality = 10.0f;
+    const float quality = 30.0f;
 
     for(int x = 0; x < MB_SIZE; x++)
     {
