@@ -102,7 +102,7 @@ void dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 	__m128 out[MB_SIZE] __attribute__((aligned(16)));
 	__m128 rows[MB_SIZE][MB_SIZE] __attribute__((aligned(16)));
 
-	/* transform rows */
+	// transform rows
 	for (int j = 0; j<MB_SIZE; j++)
 	{
 		for (int i = 0; i < MB_SIZE; i++)
@@ -118,7 +118,7 @@ void dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 		}
 	}
 
-	/* transform columns */
+	// transform columns
 	for (int j = 0; j < MB_SIZE; j++)
 	{
 		for (int i = 0; i < MB_SIZE; i++)
@@ -137,30 +137,28 @@ void dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 
 void dctQuantize(float data[MB_SIZE][MB_SIZE][4])
 {
+    const float quality = 10.0f;
+
     for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            if(fabs(data[x][y][0]) < 10.0)
+            if(fabs(data[x][y][0]) < quality)
             {
                 data[x][y][0] = 0;
             }
 
-            if(fabs(data[x][y][1]) < 10.0)
+            if(fabs(data[x][y][1]) < quality)
             {
                 data[x][y][1] = 0;
             }
 
-            if(fabs(data[x][y][2]) < 10.0)
+            if(fabs(data[x][y][2]) < quality)
             {
                 data[x][y][2] = 0;
             }
 
-            // this one is unnecessary
-            if(fabs(data[x][y][3]) < 10.0)
-            {
-                data[x][y][3] = 0;
-            }
+            data[x][y][3] = 0;
         }
     }
 }
@@ -183,32 +181,8 @@ void dctBlock(macroblock_t* block)
     dct(pixels, block->blockDataDCT);
     dctQuantize(block->blockDataDCT);
 }
-/*
-void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
-{
-	for (int y = 0; y < MB_SIZE; y++)
-	for (int x = 0; x < MB_SIZE; x++)
-	{
-		__m128 z = _mm_set1_ps(0.0f);
 
-		for (int v=0; v < MB_SIZE; v++)
-		for (int u=0; u < MB_SIZE; u++)
-		{
-			__m128 Cu = _mm_set1_ps((u == 0) ? 0.353553390f : 0.5f);        // 0.5f / sqrtf(2.0f)
-			__m128 Cv = _mm_set1_ps((v == 0) ? 0.353553390f : 0.5f);
-
-            // z += dctPrecomp[v][y] * dctPrecomp[u][x] * data[v][u] * Cu * Cv
-			z = _mm_add_ps(z,
-                _mm_mul_ps(_mm_set1_ps(idctPrecomp[v][y][u][x]), data[v][u]));
-		}
-
-		z = _mm_min_ps(_mm_max_ps(z, _mm_set1_ps(0.0f)), _mm_set1_ps(255.0f));  // clamp to max 255, min 0
-
-		_mm_storeu_ps(pixels[x][y], z);
-	}
-}
-*/
-void idct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE])
+void idct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE], bool clamp)
 {
 	for (int u = 0; u < MB_SIZE; u++)
 	{
@@ -226,6 +200,11 @@ void idct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE])
             z = _mm_add_ps(z, _mm_mul_ps(co, _mm_mul_ps(_mm_set1_ps(0.5f), _mm_mul_ps(in[x], _mm_set1_ps(dctPrecomp[x][u])))));
 		}
 
+        if(clamp)
+        {
+            z = _mm_min_ps(_mm_max_ps(z, _mm_set1_ps(0.0f)), _mm_set1_ps(255.0f));  // clamp to max 255, min 0
+        }
+
         out[u] = z;
 	}
 }
@@ -236,7 +215,7 @@ void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 	__m128 out[MB_SIZE] __attribute__((aligned(16)));
 	__m128 rows[MB_SIZE][MB_SIZE] __attribute__((aligned(16)));
 
-	/* transform rows */
+	// transform rows
 	for (int j = 0; j<MB_SIZE; j++)
 	{
 		for (int i = 0; i < MB_SIZE; i++)
@@ -244,7 +223,7 @@ void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 			in[i] = _mm_load_ps(data[i][j]);
         }
 
-		idct3_1d(in, out);
+		idct3_1d(in, out, false);
 
 		for (int i = 0; i < MB_SIZE; i++)
 		{
@@ -252,7 +231,7 @@ void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 		}
 	}
 
-	/* transform columns */
+	// transform columns
 	for (int j = 0; j < MB_SIZE; j++)
 	{
 		for (int i = 0; i < MB_SIZE; i++)
@@ -260,30 +239,13 @@ void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 			in[i] = rows[i][j];
         }
 
-		idct3_1d(in, out);
+		idct3_1d(in, out, true);
 
 		for (int i = 0; i < MB_SIZE; i++)
         {
             _mm_store_ps(pixels[i][j], out[i]);
         }
 	}
-
-    // FIXME: SIMD
-	for(int x = 0; x < MB_SIZE; x++)
-    {
-        for(int y = 0; y < MB_SIZE; y++)
-        {
-            if(pixels[x][y][0] > 255.0) pixels[x][y][0] = 255.0;
-            if(pixels[x][y][1] > 255.0) pixels[x][y][1] = 255.0;
-            if(pixels[x][y][2] > 255.0) pixels[x][y][2] = 255.0;
-            if(pixels[x][y][3] > 255.0) pixels[x][y][3] = 255.0;
-
-            if(pixels[x][y][0] < 0.0) pixels[x][y][0] = 0.0;
-            if(pixels[x][y][1] < 0.0) pixels[x][y][1] = 0.0;
-            if(pixels[x][y][2] < 0.0) pixels[x][y][2] = 0.0;
-            if(pixels[x][y][3] < 0.0) pixels[x][y][3] = 0.0;
-        }
-    }
 }
 
 void idctBlock(float data[MB_SIZE][MB_SIZE][4], float pixels[MB_SIZE][MB_SIZE][4])
@@ -485,8 +447,8 @@ void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks
 
     for(compressed_macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
     {
-        float data[MB_SIZE][MB_SIZE][4];
-        float pixels[MB_SIZE][MB_SIZE][4];
+        float data[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
+        float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
 
         // clear data, so missing values are 0
         for(int x = 0; x < MB_SIZE; x++)
