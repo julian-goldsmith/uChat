@@ -12,6 +12,7 @@
 #include <fstream>
 #include <iostream>
 #include "imgcoder.h"
+#include "dct.h"
 
 int main(int, char**)
 {
@@ -70,7 +71,7 @@ int main(int, char**)
     GLuint rmsView_id;
     glGenTextures(1, &rmsView_id);
 
-    precomputeDCTMatrix();
+    dct_precompute_matrix();
 
     // Main loop
     bool done = false;

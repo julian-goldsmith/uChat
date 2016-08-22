@@ -24,6 +24,5 @@ typedef struct
 
 compressed_macroblock_t* encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView);
 void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks, unsigned char* frameOut);
-void precomputeDCTMatrix();
 
 #endif // IMGCODER_H_INCLUDED

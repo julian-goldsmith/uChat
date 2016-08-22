@@ -1,11 +1,10 @@
-#include <math.h>
 #include <malloc.h>
 #include <memory.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
-#include <xmmintrin.h>
+#include <math.h>
 #include "imgcoder.h"
+#include "dct.h"
 
 int sortblocks(const void* val1, const void* val2)
 {
@@ -60,196 +59,6 @@ void buildBlock(macroblock_t* block, const unsigned char* imgIn)
             block->blockData[blx][bly][2] = imgIn[frameBase + 2];
         }
     }
-}
-
-// [u][x]
-float dctPrecomp[MB_SIZE][MB_SIZE];
-
-void precomputeDCTMatrix()
-{
-    for (int u = 0; u < MB_SIZE; u++)
-    {
-        for (int x = 0; x < MB_SIZE; x++)
-        {
-            dctPrecomp[u][x] = cos((float)(2*x+1) * (float)u * M_PI / (2.0 * (float) MB_SIZE));//cos(M_PI * u * (x + 0.5) / MB_SIZE);
-        }
-    }
-}
-
-void dct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE])
-{
-	for (int u = 0; u < MB_SIZE; u++)
-	{
-		__m128 z = _mm_set1_ps(0.0f);
-
-		for (int x = 0; x < MB_SIZE; x++)
-		{
-            z = _mm_add_ps(z, _mm_mul_ps(in[x], _mm_set1_ps(dctPrecomp[u][x])));
-		}
-
-		if (u == 0)
-        {
-            z = _mm_mul_ps(z, _mm_set1_ps(1.0f / sqrtf(2.0)));
-        }
-
-        out[u] = _mm_mul_ps(z, _mm_set1_ps(0.25f));
-	}
-}
-
-void dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
-{
-	__m128 in[MB_SIZE] __attribute__((aligned(16)));
-	__m128 out[MB_SIZE] __attribute__((aligned(16)));
-	__m128 rows[MB_SIZE][MB_SIZE] __attribute__((aligned(16)));
-
-	// transform rows
-	for (int j = 0; j<MB_SIZE; j++)
-	{
-		for (int i = 0; i < MB_SIZE; i++)
-        {
-			in[i] = _mm_load_ps(pixels[i][j]);
-        }
-
-		dct3_1d(in, out);
-
-		for (int i = 0; i < MB_SIZE; i++)
-		{
-            rows[j][i] = out[i];
-		}
-	}
-
-	// transform columns
-	for (int j = 0; j < MB_SIZE; j++)
-	{
-		for (int i = 0; i < MB_SIZE; i++)
-        {
-			in[i] = rows[i][j];
-        }
-
-		dct3_1d(in, out);
-
-		for (int i = 0; i < MB_SIZE; i++)
-        {
-            _mm_store_ps(data[i][j], out[i]);
-        }
-	}
-}
-
-void dctQuantize(float data[MB_SIZE][MB_SIZE][4])
-{
-    const float quality = 10.0f;
-
-    for(int x = 0; x < MB_SIZE; x++)
-    {
-        for(int y = 0; y < MB_SIZE; y++)
-        {
-            if(fabs(data[x][y][0]) < quality)
-            {
-                data[x][y][0] = 0;
-            }
-
-            if(fabs(data[x][y][1]) < quality)
-            {
-                data[x][y][1] = 0;
-            }
-
-            if(fabs(data[x][y][2]) < quality)
-            {
-                data[x][y][2] = 0;
-            }
-
-            data[x][y][3] = 0;
-        }
-    }
-}
-
-void dctBlock(unsigned char blockData[MB_SIZE][MB_SIZE][3], float blockDataDCT[MB_SIZE][MB_SIZE][4])
-{
-    float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
-
-    for(int x = 0; x < MB_SIZE; x++)
-    {
-        for(int y = 0; y < MB_SIZE; y++)
-        {
-            pixels[x][y][0] = blockData[x][y][0];
-            pixels[x][y][1] = blockData[x][y][1];
-            pixels[x][y][2] = blockData[x][y][2];
-            pixels[x][y][3] = 0.0;
-        }
-    }
-
-    dct(pixels, blockDataDCT);
-}
-
-void idct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE], bool clamp)
-{
-	for (int u = 0; u < MB_SIZE; u++)
-	{
-		__m128 z = _mm_set1_ps(0.0f);
-
-		for (int x = 0; x < MB_SIZE; x++)
-		{
-		    __m128 co = _mm_set1_ps(1.0f);
-
-            if (x == 0)
-            {
-                co = _mm_set1_ps(1.0f / sqrtf(2.0));
-            }
-
-            z = _mm_add_ps(z, _mm_mul_ps(co, _mm_mul_ps(_mm_set1_ps(0.5f), _mm_mul_ps(in[x], _mm_set1_ps(dctPrecomp[x][u])))));
-		}
-
-        if(clamp)
-        {
-            z = _mm_min_ps(_mm_max_ps(z, _mm_set1_ps(0.0f)), _mm_set1_ps(255.0f));  // clamp to max 255, min 0
-        }
-
-        out[u] = z;
-	}
-}
-
-void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
-{
-	__m128 in[MB_SIZE] __attribute__((aligned(16)));
-	__m128 out[MB_SIZE] __attribute__((aligned(16)));
-	__m128 rows[MB_SIZE][MB_SIZE] __attribute__((aligned(16)));
-
-	// transform rows
-	for (int j = 0; j<MB_SIZE; j++)
-	{
-		for (int i = 0; i < MB_SIZE; i++)
-        {
-			in[i] = _mm_load_ps(data[i][j]);
-        }
-
-		idct3_1d(in, out, false);
-
-		for (int i = 0; i < MB_SIZE; i++)
-		{
-            rows[j][i] = out[i];
-		}
-	}
-
-	// transform columns
-	for (int j = 0; j < MB_SIZE; j++)
-	{
-		for (int i = 0; i < MB_SIZE; i++)
-        {
-			in[i] = rows[i][j];
-        }
-
-		idct3_1d(in, out, true);
-
-		for (int i = 0; i < MB_SIZE; i++)
-        {
-            _mm_store_ps(pixels[i][j], out[i]);
-        }
-	}
-}
-
-void idctBlock(float data[MB_SIZE][MB_SIZE][4], float pixels[MB_SIZE][MB_SIZE][4])
-{
-    idct(pixels, data);
 }
 
 void fillInBlocks(macroblock_t* blocks, const unsigned char* imgIn, const unsigned char* prevFrame)
@@ -400,8 +209,8 @@ void convertBlocksToCBlocks(macroblock_t* blocks, compressed_macroblock_t* cbloc
         macroblock_t* block = blocks + i;
         compressed_macroblock_t* cblock = cblocks + i;
 
-        dctBlock(block->blockData, blockDataDCT);
-        dctQuantize(blockDataDCT);
+        dct_encode_block(block->blockData, blockDataDCT);
+        dct_quantize_block(blockDataDCT);
 
         int rleSize;
         float* rleData = rleValue(blockDataDCT, &rleSize);
@@ -452,7 +261,7 @@ void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks
         }
 
         unrleBlock(block, data);
-        idctBlock(data, pixels);
+        dct_decode_block(data, pixels);
 
         for(int x = 0; x < MB_SIZE; x++)
         {

@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1471823449 source:d:\dev\uchat\main.cpp
+1471829467 source:d:\dev\uchat\main.cpp
 	"imgui/imgui.h"
 	"imgui/imgui_impl_sdl_gl3.h"
 	<stdio.h>
@@ -11,6 +11,7 @@
 	<fstream>
 	<iostream>
 	"imgcoder.h"
+	"dct.h"
 
 1468034467 source:d:\dev\uchat\imgui\imgui.cpp
 	"imgui.h"
@@ -128,15 +129,23 @@
 	<vector>
 	<windows.h>
 
-1471827317 source:d:\dev\uchat\imgcoder.cpp
-	<math.h>
+1471829734 source:d:\dev\uchat\imgcoder.cpp
 	<malloc.h>
 	<memory.h>
-	<stdlib.h>
 	<assert.h>
 	<stdio.h>
+	<math.h>
+	"imgcoder.h"
+	"dct.h"
+
+1471829033 d:\dev\uchat\imgcoder.h
+
+1471829725 source:d:\dev\uchat\dct.c
+	<math.h>
+	<stdlib.h>
+	<stdbool.h>
 	<xmmintrin.h>
 	"imgcoder.h"
 
-1471828187 d:\dev\uchat\imgcoder.h
+1471829721 d:\dev\uchat\dct.h
 
