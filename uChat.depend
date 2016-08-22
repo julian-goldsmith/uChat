@@ -128,7 +128,7 @@
 	<vector>
 	<windows.h>
 
-1471825795 source:d:\dev\uchat\imgcoder.cpp
+1471827317 source:d:\dev\uchat\imgcoder.cpp
 	<math.h>
 	<malloc.h>
 	<memory.h>
@@ -138,5 +138,5 @@
 	<xmmintrin.h>
 	"imgcoder.h"
 
-1471825836 d:\dev\uchat\imgcoder.h
+1471828187 d:\dev\uchat\imgcoder.h
 

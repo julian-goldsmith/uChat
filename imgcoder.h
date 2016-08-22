@@ -12,9 +12,6 @@ typedef struct
     unsigned char mb_y;
     float rms;
     unsigned char blockData[MB_SIZE][MB_SIZE][3];
-    float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
-    int rleSize;
-    float* rleData;
 } macroblock_t;
 
 typedef struct

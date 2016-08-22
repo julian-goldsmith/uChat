@@ -163,7 +163,7 @@ void dctQuantize(float data[MB_SIZE][MB_SIZE][4])
     }
 }
 
-void dctBlock(macroblock_t* block)
+void dctBlock(unsigned char blockData[MB_SIZE][MB_SIZE][3], float blockDataDCT[MB_SIZE][MB_SIZE][4])
 {
     float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
 
@@ -171,15 +171,14 @@ void dctBlock(macroblock_t* block)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            pixels[x][y][0] = block->blockData[x][y][0];
-            pixels[x][y][1] = block->blockData[x][y][1];
-            pixels[x][y][2] = block->blockData[x][y][2];
+            pixels[x][y][0] = blockData[x][y][0];
+            pixels[x][y][1] = blockData[x][y][1];
+            pixels[x][y][2] = blockData[x][y][2];
             pixels[x][y][3] = 0.0;
         }
     }
 
-    dct(pixels, block->blockDataDCT);
-    dctQuantize(block->blockDataDCT);
+    dct(pixels, blockDataDCT);
 }
 
 void idct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE], bool clamp)
@@ -267,14 +266,6 @@ void fillInBlocks(macroblock_t* blocks, const unsigned char* imgIn, const unsign
 
             calculateBlockRMS(block, prevFrame);
         }
-    }
-}
-
-void dctBlocks(macroblock_t *blocks)
-{
-    for(macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
-    {
-        dctBlock(block);
     }
 }
 
@@ -393,19 +384,6 @@ void unrleValue(float data[MB_SIZE][MB_SIZE][4], float* rleData, int rleSize)
     }
 }
 
-void rleBlock(macroblock_t* block)
-{
-    block->rleData = rleValue(block->blockDataDCT, &block->rleSize);
-}
-
-void rleBlocks(macroblock_t *blocks)
-{
-    for(macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
-    {
-        rleBlock(block);
-    }
-}
-
 void unrleBlock(compressed_macroblock_t* block, float data[MB_SIZE][MB_SIZE][4])
 {
     unrleValue(data, block->rleData, block->rleSize);
@@ -415,15 +393,23 @@ void unrleBlock(compressed_macroblock_t* block, float data[MB_SIZE][MB_SIZE][4])
 
 void convertBlocksToCBlocks(macroblock_t* blocks, compressed_macroblock_t* cblocks)
 {
+    float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
+
     for(int i = 0; i < NUMBLOCKS; i++)
     {
         macroblock_t* block = blocks + i;
         compressed_macroblock_t* cblock = cblocks + i;
 
+        dctBlock(block->blockData, blockDataDCT);
+        dctQuantize(blockDataDCT);
+
+        int rleSize;
+        float* rleData = rleValue(blockDataDCT, &rleSize);
+
         cblock->mb_x = block->mb_x;
         cblock->mb_y = block->mb_y;
-        cblock->rleData = block->rleData;
-        cblock->rleSize = block->rleSize;
+        cblock->rleData = rleData;
+        cblock->rleSize = rleSize;
     }
 }
 
@@ -431,8 +417,6 @@ compressed_macroblock_t* encodeImage(const unsigned char* imgIn, const unsigned 
 {
     fillInBlocks(blocks, imgIn, prevFrame);
     qsort(blocks, MB_NUM_X * MB_NUM_Y, sizeof(macroblock_t), sortblocks);
-    dctBlocks(blocks);
-    rleBlocks(blocks);
 
     showRMS(blocks, rmsView);
 
