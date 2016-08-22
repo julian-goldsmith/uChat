@@ -75,7 +75,9 @@ int main(int, char**)
     dct_precompute_matrix();
 
     int totalSize = 0;
-/*
+    int numFrames = 1;
+    float avgSize = 0.0f;
+
 	WSADATA wsa;
 	SOCKET s;
 
@@ -102,7 +104,7 @@ int main(int, char**)
 	{
 		printf("connect error\n");
 		return 1;
-	}*/
+	}
 
     // Main loop
     bool done = false;
@@ -118,18 +120,21 @@ int main(int, char**)
 
         if(vi.isFrameNew(0))
         {
+            numFrames++;
+
             memcpy(prevframe, decodedframe, vi.getSize(0));
 
             vi.getPixels(0, frame, true, true);
 
             unsigned char* encodedImage = ic_encode_image(frame, prevframe, rmsView, &totalSize);
             ic_decode_image(prevframe, encodedImage, decodedframe);
-            /*if(send(s, (const char*) encodedImage, totalSize, 0) < 0)
+            if(send(s, (const char*) encodedImage, totalSize, 0) < 0)
             {
                 printf("Send failed\n");
                 return 1;
-            }*/
+            }
             free(encodedImage);
+            avgSize = ((avgSize * (numFrames - 1)) + totalSize) / numFrames;
 
             GLint last_texture;
             glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
@@ -158,6 +163,9 @@ int main(int, char**)
 
         ImGui::SameLine();
         ImGui::Text("Last frame size: %i", totalSize);
+
+        ImGui::SameLine();
+        ImGui::Text("Avg frame size: %i", (int) avgSize);
 
         ImGui::Image((void *)(intptr_t)rawinput_id, ImVec2(640, 480));
 

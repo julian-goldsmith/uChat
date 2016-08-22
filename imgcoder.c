@@ -77,7 +77,7 @@ void ic_fill_blocks(macroblock_t* blocks, const unsigned char* imgIn, const unsi
     }
 }
 
-void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView)
+void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView, short numBlocks)
 {
     float rmsMax = 0.0;
     memset(rmsView, 0, 640*480*3);
@@ -97,7 +97,7 @@ void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView)
             {
                 int frameBase = 3 * ((block->mb_y * MB_SIZE + y) * 640 + block->mb_x * MB_SIZE + x);
 
-                if(bnum < NUMBLOCKS)
+                if(bnum < numBlocks)
                 {
                     rmsView[frameBase] = 0;
                     rmsView[frameBase + 1] = 256 * (block->rms / rmsMax);
@@ -116,12 +116,12 @@ void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView)
     }
 }
 
-void ic_compress_blocks(macroblock_t* blocks, compressed_macroblock_t* cblocks)
+void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macroblock_t* cblocks)
 {
     float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
     short blockDataQuant[MB_SIZE][MB_SIZE][3];
 
-    for(int i = 0; i < NUMBLOCKS; i++)
+    for(int i = 0; i < numBlocks; i++)
     {
         macroblock_t* block = blocks + i;
         compressed_macroblock_t* cblock = cblocks + i;
@@ -139,21 +139,24 @@ void ic_compress_blocks(macroblock_t* blocks, compressed_macroblock_t* cblocks)
     }
 }
 
-unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize)
+unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize, short numBlocks)
 {
     int rleTotal = 0;
 
-    for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + NUMBLOCKS; cblock++)
+    for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
     {
         rleTotal += cblock->rleSize;
     }
 
-    *totalSize = (rleTotal * sizeof(short)) + NUMBLOCKS * (sizeof(compressed_macroblock_t) - sizeof(short*));
+    *totalSize = sizeof(short) + (rleTotal * sizeof(short)) + numBlocks * (sizeof(compressed_macroblock_t) - sizeof(short*));
 
     unsigned char* buffer = (unsigned char*) malloc(*totalSize);
     unsigned char* bp = buffer;
 
-    for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + NUMBLOCKS; cblock++)
+    *(short*) bp = numBlocks;
+    bp += sizeof(short);
+
+    for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
     {
         *bp++ = cblock->mb_x;
         *bp++ = cblock->mb_y;
@@ -168,13 +171,16 @@ unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblock
     return buffer;
 }
 
-compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data)
+compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data, short* numBlocks)
 {
-    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(sizeof(compressed_macroblock_t) * NUMBLOCKS);  // FIXME: do dynamically
+    *numBlocks = *(short*) data;
+    data += sizeof(short);
+
+    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(sizeof(compressed_macroblock_t) * *numBlocks);  // FIXME: do dynamically
 
     const unsigned char* bp = data;
 
-    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + NUMBLOCKS; cblock++)
+    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + *numBlocks; cblock++)
     {
         cblock->mb_x = *bp++;
         cblock->mb_y = *bp++;
@@ -190,14 +196,27 @@ compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data
     return cblocks;
 }
 
-void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks)
+void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks, short numBlocks)
 {
-    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + NUMBLOCKS; cblock++)
+    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
     {
         free(cblock->rleData);
     }
 
     free(cblocks);
+}
+
+short ic_get_num_blocks(const macroblock_t* blocks)
+{
+    const float rmsMin = 32.0;
+
+    for(short i = 0; i < (MB_NUM_X * MB_NUM_Y) / 16; i++)
+    {
+        if(blocks[i].rms < rmsMin)
+            return i;
+    }
+
+    return (MB_NUM_X * MB_NUM_Y) / 16;      // FIXME: make const
 }
 
 unsigned char* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame, unsigned char* rmsView, int* totalSize)
@@ -207,16 +226,17 @@ unsigned char* ic_encode_image(const unsigned char* imgIn, const unsigned char* 
     ic_fill_blocks(blocks, imgIn, prevFrame);
     qsort(blocks, MB_NUM_X * MB_NUM_Y, sizeof(macroblock_t), ic_sort_blocks);
 
-    ic_show_rms(blocks, rmsView);
+    short numBlocks = ic_get_num_blocks(blocks);
+    ic_show_rms(blocks, rmsView, numBlocks);
 
-    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) calloc(NUMBLOCKS, sizeof(compressed_macroblock_t));
-    ic_compress_blocks(blocks, cblocks);
+    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) calloc(numBlocks, sizeof(compressed_macroblock_t));
+    ic_compress_blocks(blocks, numBlocks, cblocks);
 
     free(blocks);
 
-    unsigned char* buffer = ic_stream_compressed_blocks(cblocks, totalSize);
+    unsigned char* buffer = ic_stream_compressed_blocks(cblocks, totalSize, numBlocks);
 
-    ic_clean_up_compressed_blocks(cblocks);
+    ic_clean_up_compressed_blocks(cblocks, numBlocks);
 
     return buffer;
 }
@@ -225,9 +245,10 @@ void ic_decode_image(const unsigned char* prevFrame, const unsigned char* data, 
 {
     memcpy(frameOut, prevFrame, 3 * 640 * 480);
 
-    compressed_macroblock_t* blocks = ic_unstream_compressed_blocks(data);
+    short numBlocks;
+    compressed_macroblock_t* blocks = ic_unstream_compressed_blocks(data, &numBlocks);
 
-    for(compressed_macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
+    for(compressed_macroblock_t* block = blocks; block < blocks + numBlocks; block++)
     {
         float data[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
         float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
