@@ -33,7 +33,9 @@ int main(int, char**)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_DisplayMode current;
     SDL_GetCurrentDisplayMode(0, &current);
-    SDL_Window *window = SDL_CreateWindow("ImGui SDL2+OpenGL3 example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
+    SDL_Window *window = SDL_CreateWindow("uChat",
+                                          SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          1280, 720, SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
     SDL_GLContext glcontext = SDL_GL_CreateContext(window);
     gl3wInit();
 
@@ -53,8 +55,6 @@ int main(int, char**)
     unsigned char* decodedframe = (unsigned char*) malloc(vi.getSize(0));
     unsigned char* rmsView = (unsigned char*) malloc(vi.getSize(0));
 
-    macroblock_t* blocks = (macroblock_t*) malloc(MB_NUM_X * MB_NUM_Y * sizeof(macroblock_t));
-
     memset(frame, 0xcc, vi.getSize(0) * sizeof(char));
     memset(prevframe, 0xcc, vi.getSize(0) * sizeof(char));
     memset(decodedframe, 0xcc, vi.getSize(0) * sizeof(char));
@@ -72,6 +72,8 @@ int main(int, char**)
     glGenTextures(1, &rmsView_id);
 
     dct_precompute_matrix();
+
+    int totalSize = 0;
 
     // Main loop
     bool done = false;
@@ -91,9 +93,9 @@ int main(int, char**)
 
             vi.getPixels(0, frame, true, true);
 
-            compressed_macroblock_t* cblocks = encodeImage(frame, prevframe, blocks, rmsView);
-            decodeImage(prevframe, cblocks, decodedframe);
-            free(cblocks);
+            unsigned char* encodedImage = ic_encode_image(frame, prevframe, rmsView, &totalSize);
+            ic_decode_image(prevframe, encodedImage, decodedframe);
+            free(encodedImage);
 
             GLint last_texture;
             glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
@@ -115,19 +117,20 @@ int main(int, char**)
 
         ImGui_ImplSdlGL3_NewFrame(window);
 
-        {
-            ImGui::SetNextWindowSize(ImVec2(1280,700));
-            ImGui::Begin("Window", &show_another_window);
+        ImGui::SetNextWindowSize(ImVec2(1280,700));
+        ImGui::Begin("Window", &show_another_window);
 
-            ImGui::Image((void *)(intptr_t)rawinput_id, ImVec2(640, 480));
+        ImGui::Image((void *)(intptr_t)rmsView_id, ImVec2(640, 480));
 
-            ImGui::SameLine();
-            ImGui::Image((void *)(intptr_t)decoded_id, ImVec2(640, 480));
+        ImGui::SameLine();
+        ImGui::Text("Last frame size: %i", totalSize);
 
-            ImGui::Image((void *)(intptr_t)rmsView_id, ImVec2(640, 480));
+        ImGui::Image((void *)(intptr_t)rawinput_id, ImVec2(640, 480));
 
-            ImGui::End();
-        }
+        ImGui::SameLine();
+        ImGui::Image((void *)(intptr_t)decoded_id, ImVec2(640, 480));
+
+        ImGui::End();
 
         // Rendering
         glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);

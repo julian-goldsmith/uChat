@@ -5,7 +5,7 @@
 #include "dct.h"
 #include "rle.h"
 
-int sortblocks(const void* val1, const void* val2)
+int ic_sort_blocks(const void* val1, const void* val2)
 {
     const macroblock_t* mb1 = (const macroblock_t*) val1;
     const macroblock_t* mb2 = (const macroblock_t*) val2;
@@ -18,7 +18,7 @@ int sortblocks(const void* val1, const void* val2)
         return 0;
 }
 
-void calculateBlockRMS(macroblock_t* block, const unsigned char* prevFrame)
+void ic_calculate_block_rms(macroblock_t* block, const unsigned char* prevFrame)
 {
     float blockAvg[3];
 
@@ -46,7 +46,7 @@ void calculateBlockRMS(macroblock_t* block, const unsigned char* prevFrame)
                  sqrt(blockAvg[2] / (MB_SIZE * MB_SIZE));
 }
 
-void buildBlock(macroblock_t* block, const unsigned char* imgIn)
+void ic_build_block(macroblock_t* block, const unsigned char* imgIn)
 {
     for(int blx = 0; blx < MB_SIZE; blx++)
     {
@@ -60,7 +60,7 @@ void buildBlock(macroblock_t* block, const unsigned char* imgIn)
     }
 }
 
-void fillInBlocks(macroblock_t* blocks, const unsigned char* imgIn, const unsigned char* prevFrame)
+void ic_fill_blocks(macroblock_t* blocks, const unsigned char* imgIn, const unsigned char* prevFrame)
 {
     for(int x = 0; x < MB_NUM_X; x++)
     {
@@ -70,14 +70,14 @@ void fillInBlocks(macroblock_t* blocks, const unsigned char* imgIn, const unsign
             block->mb_x = x;
             block->mb_y = y;
             block->rms = 0.0;
-            buildBlock(block, imgIn);
+            ic_build_block(block, imgIn);
 
-            calculateBlockRMS(block, prevFrame);
+            ic_calculate_block_rms(block, prevFrame);
         }
     }
 }
 
-void showRMS(const macroblock_t* blocks, unsigned char* rmsView)
+void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView)
 {
     float rmsMax = 0.0;
     memset(rmsView, 0, 640*480*3);
@@ -116,7 +116,7 @@ void showRMS(const macroblock_t* blocks, unsigned char* rmsView)
     }
 }
 
-void convertBlocksToCBlocks(macroblock_t* blocks, compressed_macroblock_t* cblocks)
+void ic_compress_blocks(macroblock_t* blocks, compressed_macroblock_t* cblocks)
 {
     float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
 
@@ -138,43 +138,98 @@ void convertBlocksToCBlocks(macroblock_t* blocks, compressed_macroblock_t* cbloc
     }
 }
 
-compressed_macroblock_t* encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView)
+unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize)
 {
-    fillInBlocks(blocks, imgIn, prevFrame);
-    qsort(blocks, MB_NUM_X * MB_NUM_Y, sizeof(macroblock_t), sortblocks);
+    int rleTotal = 0;
 
-    showRMS(blocks, rmsView);
+    for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + NUMBLOCKS; cblock++)
+    {
+        rleTotal += cblock->rleSize;
+    }
 
-    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) calloc(NUMBLOCKS, sizeof(compressed_macroblock_t));
-    convertBlocksToCBlocks(blocks, cblocks);
+    *totalSize = (rleTotal * sizeof(float)) + NUMBLOCKS * (sizeof(compressed_macroblock_t) - sizeof(float*));
+
+    unsigned char* buffer = (unsigned char*) malloc(*totalSize);
+    unsigned char* bp = buffer;
+
+    for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + NUMBLOCKS; cblock++)
+    {
+        *bp++ = cblock->mb_x;
+        *bp++ = cblock->mb_y;
+
+        memcpy(bp, &cblock->rleSize, sizeof(cblock->rleSize));
+        bp += sizeof(cblock->rleSize);
+
+        memcpy(bp, cblock->rleData, cblock->rleSize * sizeof(float));
+        bp += cblock->rleSize * sizeof(float);
+    }
+
+    return buffer;
+}
+
+compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data)
+{
+    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(sizeof(compressed_macroblock_t) * NUMBLOCKS);  // FIXME: do dynamically
+
+    const unsigned char* bp = data;
+
+    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + NUMBLOCKS; cblock++)
+    {
+        cblock->mb_x = *bp++;
+        cblock->mb_y = *bp++;
+
+        memcpy(&cblock->rleSize, bp, sizeof(cblock->rleSize));
+        bp += sizeof(cblock->rleSize);
+
+        cblock->rleData = (float*) malloc(sizeof(float) * cblock->rleSize);
+        memcpy(cblock->rleData, bp, sizeof(float) * cblock->rleSize);
+        bp += sizeof(float) * cblock->rleSize;
+    }
+
     return cblocks;
 }
 
-void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks, unsigned char* frameOut)
+void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks)
+{
+    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + NUMBLOCKS; cblock++)
+    {
+        free(cblock->rleData);
+    }
+
+    free(cblocks);
+}
+
+unsigned char* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame, unsigned char* rmsView, int* totalSize)
+{
+    macroblock_t* blocks = (macroblock_t*) malloc(MB_NUM_X * MB_NUM_Y * sizeof(macroblock_t));
+
+    ic_fill_blocks(blocks, imgIn, prevFrame);
+    qsort(blocks, MB_NUM_X * MB_NUM_Y, sizeof(macroblock_t), ic_sort_blocks);
+
+    ic_show_rms(blocks, rmsView);
+
+    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) calloc(NUMBLOCKS, sizeof(compressed_macroblock_t));
+    ic_compress_blocks(blocks, cblocks);
+
+    free(blocks);
+
+    unsigned char* buffer = ic_stream_compressed_blocks(cblocks, totalSize);
+
+    ic_clean_up_compressed_blocks(cblocks);
+
+    return buffer;
+}
+
+void ic_decode_image(const unsigned char* prevFrame, const unsigned char* data, unsigned char* frameOut)
 {
     memcpy(frameOut, prevFrame, 3 * 640 * 480);
+
+    compressed_macroblock_t* blocks = ic_unstream_compressed_blocks(data);
 
     for(compressed_macroblock_t* block = blocks; block < blocks + NUMBLOCKS; block++)
     {
         float data[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
         float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
-
-        // clear data, so missing values are 0
-        for(int x = 0; x < MB_SIZE; x++)
-        {
-            for(int y = 0; y < MB_SIZE; y++)
-            {
-                data[x][y][0] = 0;
-                data[x][y][1] = 0;
-                data[x][y][2] = 0;
-                data[x][y][3] = 0;
-
-                pixels[x][y][0] = 0;
-                pixels[x][y][1] = 0;
-                pixels[x][y][2] = 0;
-                pixels[x][y][3] = 0;
-            }
-        }
 
         rle_decode_block(data, block->rleData, block->rleSize);
         free(block->rleData);
@@ -192,4 +247,6 @@ void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks
             }
         }
     }
+
+    free(blocks);
 }

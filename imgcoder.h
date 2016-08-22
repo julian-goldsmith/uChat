@@ -26,8 +26,8 @@ typedef struct
 extern "C" {
 #endif
 
-compressed_macroblock_t* encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView);
-void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks, unsigned char* frameOut);
+unsigned char* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame, unsigned char* rmsView, int* totalSize);
+void ic_decode_image(const unsigned char* prevFrame, const unsigned char* data, unsigned char* frameOut);
 
 #ifdef __cplusplus
 }
