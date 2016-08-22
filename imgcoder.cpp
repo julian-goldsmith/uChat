@@ -199,8 +199,7 @@ void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 
             // z += dctPrecomp[v][y] * dctPrecomp[u][x] * data[v][u] * Cu * Cv
 			z = _mm_add_ps(z,
-                _mm_mul_ps(_mm_set1_ps(idctPrecomp[v][y][u][x]),
-                    _mm_mul_ps(_mm_load_ps(data[v][u]), _mm_mul_ps(Cu, Cv))));
+                _mm_mul_ps(_mm_set1_ps(idctPrecomp[v][y][u][x]), data[v][u]));
 		}
 
 		z = _mm_min_ps(_mm_max_ps(z, _mm_set1_ps(0.0f)), _mm_set1_ps(255.0f));  // clamp to max 255, min 0
@@ -217,15 +216,17 @@ void idct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE])
 
 		for (int x = 0; x < MB_SIZE; x++)
 		{
+		    __m128 co = _mm_set1_ps(1.0f);
+
             if (x == 0)
             {
-                z = _mm_mul_ps(z, _mm_set1_ps(1.0f / sqrtf(2.0)));
+                co = _mm_set1_ps(1.0f / sqrtf(2.0));
             }
 
-            z = _mm_add_ps(z, _mm_mul_ps(in[x], _mm_set1_ps(dctPrecomp[x][u])));
+            z = _mm_add_ps(z, _mm_mul_ps(co, _mm_mul_ps(_mm_set1_ps(0.5f), _mm_mul_ps(in[x], _mm_set1_ps(dctPrecomp[x][u])))));
 		}
 
-        out[u] = _mm_mul_ps(z, _mm_set1_ps(0.25f));
+        out[u] = z;
 	}
 }
 
@@ -267,15 +268,20 @@ void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
         }
 	}
 
-    // FIXME: this fixes an error in idct3_1d, fix there instead
+    // FIXME: SIMD
 	for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            pixels[x][y][0] *= 2.0f;
-            pixels[x][y][1] *= 2.0f;
-            pixels[x][y][2] *= 2.0f;
-            pixels[x][y][3] *= 2.0f;
+            if(pixels[x][y][0] > 255.0) pixels[x][y][0] = 255.0;
+            if(pixels[x][y][1] > 255.0) pixels[x][y][1] = 255.0;
+            if(pixels[x][y][2] > 255.0) pixels[x][y][2] = 255.0;
+            if(pixels[x][y][3] > 255.0) pixels[x][y][3] = 255.0;
+
+            if(pixels[x][y][0] < 0.0) pixels[x][y][0] = 0.0;
+            if(pixels[x][y][1] < 0.0) pixels[x][y][1] = 0.0;
+            if(pixels[x][y][2] < 0.0) pixels[x][y][2] = 0.0;
+            if(pixels[x][y][3] < 0.0) pixels[x][y][3] = 0.0;
         }
     }
 }
