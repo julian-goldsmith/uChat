@@ -1,5 +1,4 @@
 #include <math.h>
-#include <stdlib.h>
 #include <stdbool.h>
 #include <xmmintrin.h>
 #include "imgcoder.h"

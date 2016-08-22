@@ -22,7 +22,15 @@ typedef struct
     float* rleData;
 } compressed_macroblock_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 compressed_macroblock_t* encodeImage(const unsigned char* imgIn, const unsigned char* prevFrame, macroblock_t* blocks, unsigned char* rmsView);
 void decodeImage(const unsigned char* prevFrame, compressed_macroblock_t* blocks, unsigned char* frameOut);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // IMGCODER_H_INCLUDED
