@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-float* rle_encode_block(float data[MB_SIZE][MB_SIZE][4], int* rleSize);
-void rle_decode_block(float data[MB_SIZE][MB_SIZE][4], float* rleData, int rleSize);
+short* rle_encode_block(short data[MB_SIZE][MB_SIZE][4], int* rleSize);
+void rle_decode_block(float data[MB_SIZE][MB_SIZE][4], short* rleData, int rleSize);
 
 #ifdef __cplusplus
 }

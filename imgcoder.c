@@ -119,6 +119,7 @@ void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView)
 void ic_compress_blocks(macroblock_t* blocks, compressed_macroblock_t* cblocks)
 {
     float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
+    short blockDataQuant[MB_SIZE][MB_SIZE][3];
 
     for(int i = 0; i < NUMBLOCKS; i++)
     {
@@ -126,10 +127,10 @@ void ic_compress_blocks(macroblock_t* blocks, compressed_macroblock_t* cblocks)
         compressed_macroblock_t* cblock = cblocks + i;
 
         dct_encode_block(block->blockData, blockDataDCT);
-        dct_quantize_block(blockDataDCT);
+        dct_quantize_block(blockDataDCT, blockDataQuant);
 
         int rleSize;
-        float* rleData = rle_encode_block(blockDataDCT, &rleSize);
+        short* rleData = rle_encode_block(blockDataQuant, &rleSize);
 
         cblock->mb_x = block->mb_x;
         cblock->mb_y = block->mb_y;
@@ -147,7 +148,7 @@ unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblock
         rleTotal += cblock->rleSize;
     }
 
-    *totalSize = (rleTotal * sizeof(float)) + NUMBLOCKS * (sizeof(compressed_macroblock_t) - sizeof(float*));
+    *totalSize = (rleTotal * sizeof(short)) + NUMBLOCKS * (sizeof(compressed_macroblock_t) - sizeof(short*));
 
     unsigned char* buffer = (unsigned char*) malloc(*totalSize);
     unsigned char* bp = buffer;
@@ -160,8 +161,8 @@ unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblock
         memcpy(bp, &cblock->rleSize, sizeof(cblock->rleSize));
         bp += sizeof(cblock->rleSize);
 
-        memcpy(bp, cblock->rleData, cblock->rleSize * sizeof(float));
-        bp += cblock->rleSize * sizeof(float);
+        memcpy(bp, cblock->rleData, cblock->rleSize * sizeof(short));
+        bp += cblock->rleSize * sizeof(short);
     }
 
     return buffer;
@@ -181,9 +182,9 @@ compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data
         memcpy(&cblock->rleSize, bp, sizeof(cblock->rleSize));
         bp += sizeof(cblock->rleSize);
 
-        cblock->rleData = (float*) malloc(sizeof(float) * cblock->rleSize);
-        memcpy(cblock->rleData, bp, sizeof(float) * cblock->rleSize);
-        bp += sizeof(float) * cblock->rleSize;
+        cblock->rleData = (short*) malloc(sizeof(short) * cblock->rleSize);
+        memcpy(cblock->rleData, bp, sizeof(short) * cblock->rleSize);
+        bp += sizeof(short) * cblock->rleSize;
     }
 
     return cblocks;

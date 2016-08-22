@@ -19,7 +19,7 @@ typedef struct
     unsigned char mb_x;
     unsigned char mb_y;
     int rleSize;
-    float* rleData;
+    short* rleData;
 } compressed_macroblock_t;
 
 #ifdef __cplusplus

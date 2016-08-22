@@ -1,14 +1,14 @@
 #include <malloc.h>
 #include "imgcoder.h"
 
-float* rle_encode_block(float data[MB_SIZE][MB_SIZE][4], int* rleSize)
+short* rle_encode_block(short data[MB_SIZE][MB_SIZE][3], int* rleSize)
 {
-    float* odata = (float*) calloc(MB_SIZE * MB_SIZE * 4, sizeof(float));    // resize later
+    short* odata = (short*) calloc(MB_SIZE * MB_SIZE * 4, sizeof(short));    // resize later
     int odatacount = 0;
 
-    float counter = 0.0;
+    short counter = 0.0;
 
-    float value[3];
+    short value[3];
     value[0] = data[0][0][0];
     value[1] = data[0][0][1];
     value[2] = data[0][0][2];
@@ -45,12 +45,12 @@ float* rle_encode_block(float data[MB_SIZE][MB_SIZE][4], int* rleSize)
 
     *rleSize = odatacount;
 
-    return (float*) realloc(odata, sizeof(float) * odatacount);
+    return (short*) realloc(odata, sizeof(short) * odatacount);
 }
 
-void rle_decode_block(float data[MB_SIZE][MB_SIZE][4], float* rleData, int rleSize)
+void rle_decode_block(float data[MB_SIZE][MB_SIZE][4], short* rleData, int rleSize)
 {
-    float counter = 0.0;
+    short counter = 0;
     int x = 0;
     int y = 0;
 

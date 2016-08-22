@@ -75,7 +75,7 @@ int main(int, char**)
     dct_precompute_matrix();
 
     int totalSize = 0;
-
+/*
 	WSADATA wsa;
 	SOCKET s;
 
@@ -102,7 +102,7 @@ int main(int, char**)
 	{
 		printf("connect error\n");
 		return 1;
-	}
+	}*/
 
     // Main loop
     bool done = false;
@@ -124,11 +124,11 @@ int main(int, char**)
 
             unsigned char* encodedImage = ic_encode_image(frame, prevframe, rmsView, &totalSize);
             ic_decode_image(prevframe, encodedImage, decodedframe);
-            if(send(s, (const char*) encodedImage, totalSize, 0) < 0)
+            /*if(send(s, (const char*) encodedImage, totalSize, 0) < 0)
             {
                 printf("Send failed\n");
                 return 1;
-            }
+            }*/
             free(encodedImage);
 
             GLint last_texture;
