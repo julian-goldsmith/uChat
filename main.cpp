@@ -77,7 +77,7 @@ int main(int, char**)
     int totalSize = 0;
     int numFrames = 1;
     float avgSize = 0.0f;
-
+/*
 	WSADATA wsa;
 	SOCKET s;
 
@@ -104,7 +104,7 @@ int main(int, char**)
 	{
 		printf("connect error\n");
 		return 1;
-	}
+	}*/
 
     // Main loop
     bool done = false;
@@ -128,11 +128,11 @@ int main(int, char**)
 
             unsigned char* encodedImage = ic_encode_image(frame, prevframe, rmsView, &totalSize);
             ic_decode_image(prevframe, encodedImage, decodedframe);
-            if(send(s, (const char*) encodedImage, totalSize, 0) < 0)
+            /*if(send(s, (const char*) encodedImage, totalSize, 0) < 0)
             {
                 printf("Send failed\n");
                 return 1;
-            }
+            }*/
             free(encodedImage);
             avgSize = ((avgSize * (numFrames - 1)) + totalSize) / numFrames;
 
@@ -179,6 +179,7 @@ int main(int, char**)
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui::Render();
+        SDL_GL_SetSwapInterval(1);
         SDL_GL_SwapWindow(window);
     }
 
