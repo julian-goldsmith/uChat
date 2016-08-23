@@ -18,8 +18,7 @@ typedef struct
 {
     unsigned char mb_x;
     unsigned char mb_y;
-    int rleSize;
-    short* rleData;
+    short blockDataQuant[MB_SIZE][MB_SIZE][3];
 } compressed_macroblock_t;
 
 #ifdef __cplusplus
@@ -27,7 +26,7 @@ extern "C" {
 #endif
 
 unsigned char* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame, unsigned char* rmsView, int* totalSize);
-void ic_decode_image(const unsigned char* prevFrame, const unsigned char* data, unsigned char* frameOut);
+void ic_decode_image(const unsigned char* prevFrame, const unsigned char* data, const int datalen, unsigned char* frameOut);
 
 #ifdef __cplusplus
 }

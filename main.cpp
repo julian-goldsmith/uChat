@@ -127,7 +127,7 @@ int main(int, char**)
             vi.getPixels(0, frame, true, true);
 
             unsigned char* encodedImage = ic_encode_image(frame, prevframe, rmsView, &totalSize);
-            ic_decode_image(prevframe, encodedImage, decodedframe);
+            ic_decode_image(prevframe, encodedImage, totalSize, decodedframe);
             /*if(send(s, (const char*) encodedImage, totalSize, 0) < 0)
             {
                 printf("Send failed\n");
