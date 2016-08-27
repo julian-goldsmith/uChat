@@ -3,6 +3,7 @@
 
 #include <malloc.h>
 #include <memory.h>
+#include <assert.h>
 
 typedef struct
 {
@@ -20,6 +21,19 @@ inline array_t* array_create(unsigned int item_size, unsigned int initial_capaci
     array->capacity = initial_capacity;
     array->item_size = item_size;
     array->base = (unsigned char*) malloc(array->capacity * array->item_size);
+
+    return array;
+}
+
+inline array_t* array_create_from_pointer(void* pointer, unsigned int item_size, unsigned int len)
+{
+    array_t* array = (array_t*) malloc(sizeof(array_t));
+
+    // FIXME: copy data at pointer instead of using like this
+    array->len = len;
+    array->capacity = len;
+    array->item_size = item_size;
+    array->base = pointer;
 
     return array;
 }

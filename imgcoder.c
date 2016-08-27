@@ -149,11 +149,12 @@ unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblock
         bp += sizeof(compressed_macroblock_t);
     }
 
-    unsigned char* compressed = huffman_encode(buffer, size, totalSize);
+    array_t* compressed = huffman_encode(buffer, size);
+    *totalSize = compressed->len;
 
     free(buffer);
 
-    return compressed;
+    return compressed->base;        // FIXME: leak
 }
 
 compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data, const int datalen, short* numBlocks)
