@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <memory.h>
 #include "huffman.h"
+#include "array.h"
 
 typedef struct frequency_s
 {
@@ -24,9 +25,9 @@ int huffman_freq_sort(const void* val1, const void* val2)
     else if(*freq2 == NULL)
         return 1;
 
-    if(*freq1->count < *freq2->count)
+    if((*freq1)->count < (*freq2)->count)
         return -1;
-    else if(*freq1->count > *freq2->count)
+    else if((*freq1)->count > (*freq2)->count)
         return 1;
     else
         return 0;
@@ -47,7 +48,7 @@ frequency_t* huffman_build_tree(frequency_t* freqs)
 
     for(int i = 0; i < 256; i++)
     {
-        list[i] = freqs[i];
+        list[i] = freqs + i;
         listLen++;
     }
 
@@ -57,7 +58,7 @@ frequency_t* huffman_build_tree(frequency_t* freqs)
     }
 
     // FIXME FIXME FIXME: memory leak
-    frequency_t* internalnodes = (frequency_t*) calloc(1024, sizeof(frequency_t));
+    frequency_t* internalNodes = (frequency_t*) calloc(1024, sizeof(frequency_t));
     int internalNodePos = 0;
 
     while(listLen > 1)
@@ -70,12 +71,63 @@ frequency_t* huffman_build_tree(frequency_t* freqs)
         internalNodePos++;
     }
 
-    internalNodes = (frequency_t*) realloc(internalnodes, sizeof(frequency_t*) * internalNodePos);
+    internalNodes = (frequency_t*) realloc(internalNodes, sizeof(frequency_t*) * internalNodePos);
 
     frequency_t* retval = list[0];
     free(list);
 
     return retval;
+}
+
+/*
+string encodeChar(node_t root, char c, string acc = "")
+{
+	if(c == root.val)
+	{
+		return acc;
+	}
+	else if(root.left == null)
+	{
+		return null;
+	}
+
+	return encodeChar(root.left, c, acc + "0") ?? encodeChar(root.right, c, acc + "1");
+}
+*/
+array_t* huffman_encode_byte(frequency_t* root, char byte, array_t* acc)
+{
+    if(root->val == byte)
+    {
+        return acc;
+    }
+    else if(root->left == NULL)
+    {
+        return NULL;
+    }
+
+    // FIXME: shitloads of memory leaks
+    unsigned char left_c = 0x00;
+    array_t* left_acc = array_copy(acc);
+    array_append(left_acc, &left_c);
+    array_t* left_result = huffman_encode_byte(root->left, byte, left_acc);
+    if(left_result != null)
+    {
+        return left_result;
+    }
+    free(left_acc);
+
+    unsigned char right_c = 0x01;
+    array_t* right_acc = array_copy(acc);
+    array_append(right_acc, &right_c);
+    array_t* right_result = huffman_encode_byte(root->right, byte, right_acc);
+    if(right_result != null)
+    {
+        return right_result;
+    }
+    free(right_acc);
+
+    // FIXME: don't think it can ever reach here, but I might be wrong
+    return NULL;
 }
 
 unsigned char* huffman_encode(const unsigned char* data, int datalen, int* outdatalen)
@@ -99,8 +151,9 @@ unsigned char* huffman_encode(const unsigned char* data, int datalen, int* outda
 
     unsigned char* outdata = (unsigned char*) malloc(sizeof(unsigned char) * datalen + sizeof(frequency_t) * 256);
     int outdatapos = 0;
+    array_t* outbitstream = array_create(1, 6);
 
-    // write dictionary
+    // write frequencies, so we can build dictionary
     memcpy(outdata + outdatapos, freqs, sizeof(frequency_t) * 256);
     outdatapos += sizeof(frequency_t) * 256;
 
@@ -125,6 +178,38 @@ unsigned char* huffman_encode(const unsigned char* data, int datalen, int* outda
     return outdata;
 }
 
+/*
+string decodeChars(string s, node_t realroot)
+{
+	node_t root = realroot;
+	StringBuilder acc = new StringBuilder();
+	int spos = 0;
+
+	while(spos < s.Length)
+	{
+		if(root.left == null)
+		{
+			acc.Append(root.val);
+			root = realroot;
+		}
+
+		if(s[spos] == '0')
+		{
+			root = root.left;
+			spos++;
+		}
+		else
+		{
+			root = root.right;
+			spos++;
+		}
+	}
+
+	acc.Append(root.val);
+
+	return acc.ToString();
+}
+*/
 unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outdatalen)
 {
     frequency_t* dict = (frequency_t*) data;
