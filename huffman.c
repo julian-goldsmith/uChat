@@ -88,48 +88,41 @@ frequency_t* huffman_build_tree(frequency_t** freqs)
     return retval;
 }
 
-array_t* huffman_encode_byte(frequency_t* root, unsigned char byte, array_t* acc)
+bool huffman_encode_byte(frequency_t* root, unsigned char byte, array_t* acc)
 {
     if(root == NULL)
     {
-        return NULL;
+        return false;
     }
 
     if(root->val == byte && root->is_leaf)
     {
-        return acc;
+        return true;
     }
 
-    // FIXME: shitloads of memory leaks
     unsigned char right_c = 0x1;
-
     array_append(acc, &right_c);
 
-    array_t* right_result = huffman_encode_byte(root->right, byte, acc);
-
-    if(right_result != NULL)
+    bool right_result = huffman_encode_byte(root->right, byte, acc);
+    if(right_result)
     {
         return right_result;
     }
 
     array_pop(acc);
 
-
     unsigned char left_c = 0x0;
-
     array_append(acc, &left_c);
 
-    array_t* left_result = huffman_encode_byte(root->left, byte, acc);
-
-    if(left_result != NULL)
+    bool left_result = huffman_encode_byte(root->left, byte, acc);
+    if(left_result)
     {
         return left_result;
     }
 
     array_pop(acc);
 
-    // FIXME: don't think it can ever reach here, but I might be wrong
-    return NULL;
+    return false;
 }
 
 array_t* huffman_encode(const unsigned char* data, int datalen)
@@ -165,31 +158,12 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     // for now, encode as chars; should be bitstream
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        array_t* acc = array_create(1, 6);
+        bool enc = huffman_encode_byte(root, *item, encoded_stream);
 
-        array_t* encoded_byte = huffman_encode_byte(root, *item, acc);
-
-        if(encoded_byte == NULL)
+        if(enc == false)
         {
-            assert(encoded_byte != NULL);
+            assert(enc);
         }
-
-        if(encoded_byte->len == 0)
-        {
-            assert(0);
-        }
-
-        array_t* encoded_stream_new = array_append_array(encoded_stream, encoded_byte);  // FIXME: leak
-        array_free(encoded_stream);
-        encoded_stream = encoded_stream_new;
-
-        // FIXME: not sure when this is true
-        if(acc != encoded_byte)
-        {
-            array_free(acc);
-        }
-
-        array_free(encoded_byte);
     }
 
     free(freqs);
@@ -200,12 +174,11 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     freq_array->capacity *= freq_array->item_size;
     freq_array->item_size = 1;
 
-    array_t* outbitstream = array_append_array(freq_array, encoded_stream);
+    array_append_array(freq_array, encoded_stream);
 
-    array_free(freq_array);
     array_free(encoded_stream);
 
-    return outbitstream;
+    return freq_array;
 }
 
 unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outdatalen)

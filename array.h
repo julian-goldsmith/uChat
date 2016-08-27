@@ -84,20 +84,14 @@ inline array_t* array_copy(array_t* array)
     return new_array;
 }
 
-inline array_t* array_append_array(array_t* array1, array_t* array2)
+inline void array_append_array(array_t* array1, array_t* array2)
 {
     assert(array1->item_size == array2->item_size);
 
-    // FIXME: don't blindly add capacities, check if they can both fit in 1
-    array_t* new_array = array_create(array1->item_size, array1->capacity + array2->capacity);
-
-    new_array->len = array1->len;
-    memcpy(new_array->base, array1->base, array1->len * array1->item_size);
-
-    new_array->len += array2->len;
-    memcpy(new_array->base + array1->len * array1->item_size, array2->base, array2->len * array2->item_size);
-
-    return new_array;
+    array1->capacity += array2->len;
+    array1->base = (unsigned char*) realloc(array1->base, array1->capacity * array1->item_size);
+    memcpy(array1->base + array1->len * array1->item_size, array2->base, array2->len * array2->item_size);
+    array1->len += array2->len;
 }
 
 inline void array_pop(array_t* array)
