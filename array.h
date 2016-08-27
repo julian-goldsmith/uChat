@@ -64,7 +64,8 @@ inline unsigned int array_append(array_t* array, void* item)
 {
     if(array->capacity == array->len)
     {
-        array->base = (unsigned char*) realloc(array->base, (array->capacity + 5) * array->item_size);
+        array->capacity += 5;
+        array->base = (unsigned char*) realloc(array->base, array->capacity * array->item_size);
     }
 
     array->len++;
@@ -97,6 +98,11 @@ inline array_t* array_append_array(array_t* array1, array_t* array2)
     memcpy(new_array->base + array1->len * array1->item_size, array2->base, array2->len * array2->item_size);
 
     return new_array;
+}
+
+inline void array_pop(array_t* array)
+{
+    array->len--;
 }
 
 #endif // ARRAY_H_INCLUDED

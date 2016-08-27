@@ -3,12 +3,14 @@
 #include <stdint.h>
 #include <memory.h>
 #include <assert.h>
+#include <stdbool.h>
 #include "huffman.h"
 #include "array.h"
 
 typedef struct frequency_s
 {
     unsigned int count;
+    bool is_leaf;
     struct frequency_s* left;
     struct frequency_s* right;
     unsigned char val;
@@ -19,6 +21,7 @@ int huffman_freq_sort(const void* val1, const void* val2)
     const frequency_t** freq1 = (const frequency_t**) val1;
     const frequency_t** freq2 = (const frequency_t**) val2;
 
+    // FIXME: can probably get rid of NULL checks
     if(*freq1 == NULL && *freq2 == NULL)
         return 0;
     else if(*freq1 == NULL)
@@ -27,55 +30,56 @@ int huffman_freq_sort(const void* val1, const void* val2)
         return -1;
 
     if((*freq1)->count < (*freq2)->count)
-        return 1;
-    else if((*freq1)->count > (*freq2)->count)
         return -1;
+    else if((*freq1)->count > (*freq2)->count)
+        return 1;
     else
         return 0;
 }
 
-void buildInternalNode(frequency_t* node, frequency_t* left, frequency_t* right)
+frequency_t* buildInternalNode(frequency_t* left, frequency_t* right)
 {
+    frequency_t* node = (frequency_t*) malloc(sizeof(frequency_t));
     node->count = left->count + right->count;
+    node->is_leaf = false;
     node->left = left;
     node->right = right;
     node->val = 0;
+    return node;
 }
 
-frequency_t* huffman_build_tree(frequency_t* freqs, frequency_t* internalNodes)
+void freeTree(frequency_t* root)
 {
-    int listLen = 0;
+    if(root->left != NULL)
+    {
+        freeTree(root->left);
+    }
+
+    if(root->right != NULL)
+    {
+        freeTree(root->right);
+    }
+
+    free(root);
+}
+
+frequency_t* huffman_build_tree(frequency_t** freqs)
+{
+    int listLen = 256;
     frequency_t** list = (frequency_t**) calloc(256, sizeof(frequency_t*));
 
     for(int i = 0; i < 256; i++)
     {
-        list[i] = freqs + i;
-    }
-
-    qsort(list, 256, sizeof(frequency_t*), huffman_freq_sort);
-
-    for(listLen = 0; listLen < 256 && list[listLen]->count > 0; listLen++);
-
-    // FIXME FIXME FIXME: memory leak
-    frequency_t* internalNodes = (frequency_t*) calloc(256, sizeof(frequency_t));
-    int internalNodePos = 0;
-
-    // FIXME: generalize these cases
-    if(listLen == 1)
-    {
-        buildInternalNode(internalNodes + internalNodePos, list[0], list[1]);
-        list[0] = internalNodes + internalNodePos;
+        list[i] = freqs[i];
     }
 
     while(listLen > 1)
     {
         qsort(list, listLen, sizeof(frequency_t*), huffman_freq_sort);
-        buildInternalNode(internalNodes + internalNodePos, list[0], list[1]);
-        list[0] = internalNodes + internalNodePos;
+        list[0] = buildInternalNode(list[0], list[1]);
         list[1] = list[listLen - 1];
-        list[listLen - 1] = NULL;
+        list[listLen - 1] = NULL;       // FIXME: can probably get rid of
         listLen--;
-        internalNodePos++;
     }
 
     frequency_t* retval = list[0];
@@ -84,40 +88,45 @@ frequency_t* huffman_build_tree(frequency_t* freqs, frequency_t* internalNodes)
     return retval;
 }
 
-array_t* huffman_encode_byte(frequency_t* root, char byte, array_t* acc)
+array_t* huffman_encode_byte(frequency_t* root, unsigned char byte, array_t* acc)
 {
-    if(root->left == NULL || root->right == NULL)
+    if(root == NULL)
     {
-        if(root->val == byte)
-        {
-            return acc;
-        }
-        else
-        {
-            return NULL;
-        }
+        return NULL;
+    }
+
+    if(root->val == byte && root->is_leaf)
+    {
+        return acc;
     }
 
     // FIXME: shitloads of memory leaks
-    unsigned char left_c = 0x00;
-    array_t* left_acc = array_copy(acc);
-    array_append(left_acc, &left_c);
-    array_t* left_result = huffman_encode_byte(root->left, byte, left_acc);
-    if(left_result != NULL)
-    {
-        return left_result;
-    }
-    free(left_acc);
+    unsigned char right_c = 0x1;
 
-    unsigned char right_c = 0x01;
-    array_t* right_acc = array_copy(acc);
-    array_append(right_acc, &right_c);
-    array_t* right_result = huffman_encode_byte(root->right, byte, right_acc);
+    array_append(acc, &right_c);
+
+    array_t* right_result = huffman_encode_byte(root->right, byte, acc);
+
     if(right_result != NULL)
     {
         return right_result;
     }
-    free(right_acc);
+
+    array_pop(acc);
+
+
+    unsigned char left_c = 0x0;
+
+    array_append(acc, &left_c);
+
+    array_t* left_result = huffman_encode_byte(root->left, byte, acc);
+
+    if(left_result != NULL)
+    {
+        return left_result;
+    }
+
+    array_pop(acc);
 
     // FIXME: don't think it can ever reach here, but I might be wrong
     return NULL;
@@ -125,24 +134,31 @@ array_t* huffman_encode_byte(frequency_t* root, char byte, array_t* acc)
 
 array_t* huffman_encode(const unsigned char* data, int datalen)
 {
-    frequency_t* freqs = (frequency_t*) malloc(sizeof(frequency_t) * 256);
+    frequency_t** freqs = (frequency_t**) malloc(sizeof(frequency_t*) * 256);
 
     for(unsigned int s = 0; s < 256; s++)
     {
-        freqs[s].val = s;
-        freqs[s].count = 0;
-        freqs[s].left = NULL;
-        freqs[s].right = NULL;
+        freqs[s] = (frequency_t*) malloc(sizeof(frequency_t));
+        freqs[s]->val = s;
+        freqs[s]->count = 0;
+        freqs[s]->is_leaf = true;
+        freqs[s]->left = NULL;
+        freqs[s]->right = NULL;
     }
 
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        freqs[*item].count++;
+        freqs[*item]->count++;
     }
 
     frequency_t* root = huffman_build_tree(freqs);      // FIXME: memory leak on this
 
-    array_t* freq_array = array_create_from_pointer(freqs, 1, sizeof(frequency_t) * 256);   // use as char instead of frequency_t
+    array_t* freq_array = array_create(sizeof(frequency_t), 256);
+
+    for(int i = 0; i < 256; i++)
+    {
+        array_append(freq_array, freqs[i]);
+    }
 
     array_t* encoded_stream = array_create(1, 6);
 
@@ -150,9 +166,22 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
         array_t* acc = array_create(1, 6);
+
         array_t* encoded_byte = huffman_encode_byte(root, *item, acc);
 
-        encoded_stream = array_append_array(encoded_stream, encoded_byte);  // FIXME: leak
+        if(encoded_byte == NULL)
+        {
+            assert(encoded_byte != NULL);
+        }
+
+        if(encoded_byte->len == 0)
+        {
+            assert(0);
+        }
+
+        array_t* encoded_stream_new = array_append_array(encoded_stream, encoded_byte);  // FIXME: leak
+        array_free(encoded_stream);
+        encoded_stream = encoded_stream_new;
 
         // FIXME: not sure when this is true
         if(acc != encoded_byte)
@@ -163,9 +192,16 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
         array_free(encoded_byte);
     }
 
+    free(freqs);
+    freeTree(root);
+
+    // FIXME: hack
+    freq_array->len *= freq_array->item_size;
+    freq_array->capacity *= freq_array->item_size;
+    freq_array->item_size = 1;
+
     array_t* outbitstream = array_append_array(freq_array, encoded_stream);
 
-    //free(freqs);
     array_free(freq_array);
     array_free(encoded_stream);
 
@@ -177,7 +213,19 @@ unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outda
     frequency_t* dict = (frequency_t*) data;
     const unsigned char* indices = data + 256 * sizeof(frequency_t);
 
-    frequency_t* root = huffman_build_tree(dict);
+    frequency_t** freqs = (frequency_t**) malloc(sizeof(frequency_t*) * 256);
+
+    for(int i = 0; i < 256; i++)
+    {
+        freqs[i] = (frequency_t*) malloc(sizeof(frequency_t));
+        freqs[i]->val = dict[i].val;
+        freqs[i]->count = dict[i].count;
+        freqs[i]->is_leaf = true;
+        freqs[i]->left = NULL;
+        freqs[i]->right = NULL;
+    }
+
+    frequency_t* root = huffman_build_tree(freqs);
 
     array_t* out_array = array_create(1, 10000);
 
@@ -216,6 +264,7 @@ unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outda
     *outdatalen = out_array->len;
 
     free(out_array);
+    freeTree(root);
 
     return outdata;
 }

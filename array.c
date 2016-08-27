@@ -9,3 +9,4 @@ void array_set(array_t* array, unsigned int idx, void* item);
 unsigned int array_append(array_t* array, void* item);
 array_t* array_copy(array_t* array);
 array_t* array_append_array(array_t* array1, array_t* array2);
+void array_pop(array_t* array);
