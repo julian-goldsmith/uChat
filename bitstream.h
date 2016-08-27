@@ -3,21 +3,26 @@
 
 #include <malloc.h>
 #include <stdbool.h>
+#include "array.h"
 
 typedef struct
 {
-    unsigned int capacityBytes;
+    array_t* array;
     unsigned int pos;
-    unsigned char* data;
 } bitstream_t;
 
 inline bitstream_t* bitstream_create()
 {
     bitstream_t* bs = (bitstream_t*) calloc(1, sizeof(bitstream_t));
-    bs->data = (unsigned char*) calloc(64, 1);
-    bs->capacityBytes = 64;
+    bs->array = array_create(1, 4);
     bs->pos = 0;
     return bs;
+}
+
+inline void bitstream_free(bitstream_t* bs)
+{
+    array_free(bs->array);
+    free(bs);
 }
 
 #define BS_ORMASK(n) (1 << (n%8))
@@ -25,24 +30,33 @@ inline bitstream_t* bitstream_create()
 
 inline void bitstream_append(bitstream_t* bs, bool value)
 {
-    if(bs->pos >= bs->capacityBytes * 8)
+    if(bs->pos % 8 == 0)
     {
-        // FIXME: resize
-        return;
+        unsigned char c = 0;
+        array_append(bs->array, &c);
     }
 
-    unsigned char data = bs->data[bs->pos / 8];
-    data = (data & BS_ANDMASK(bs->pos)) | (value * BS_ORMASK(value));
-    bs->data[bs->pos / 8] = data;
-    pos++;
+    unsigned char data = bs->array->base[bs->pos / 8];
+
+    data = (data & BS_ANDMASK(bs->pos)) | (value << (bs->pos%8));
+    bs->array->base[bs->pos / 8] = data;
+
+    bs->pos++;
 }
 
-inline bool bitstream_read(bitstream_t* ps)
+inline bool bitstream_read(bitstream_t* bs)
 {
-    unsigned char data = bs->data[bs->pos / 8];
-    data &= BS_ANDMASK(bs->pos);
-    data >>= (bs->pos % 8);
-    return (bool) data;
+    unsigned char data = bs->array->base[bs->pos / 8] & BS_ORMASK(bs->pos);
+
+    bs->pos++;
+
+    return (bool) data;//>>(bs->pos % 8);
+}
+
+inline void bitstream_pop(bitstream_t* bs)
+{
+    // FIXME: overflow
+    bs->pos--;
 }
 
 #endif // BITSTREAM_H_INCLUDED

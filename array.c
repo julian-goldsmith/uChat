@@ -1,4 +1,5 @@
 #include "array.h"
+#include "bitstream.h"
 
 // this is apparently necessary for C99
 array_t* array_create(unsigned int item_size, unsigned int initial_capacity);
@@ -10,3 +11,9 @@ unsigned int array_append(array_t* array, void* item);
 array_t* array_copy(array_t* array);
 void array_append_array(array_t* array1, array_t* array2);
 void array_pop(array_t* array);
+
+bitstream_t* bitstream_create();
+void bitstream_append(bitstream_t* bs, bool value);
+bool bitstream_read(bitstream_t* bs);
+void bitstream_pop(bitstream_t* bs);
+void bitstream_free(bitstream_t* bs);

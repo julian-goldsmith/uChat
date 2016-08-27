@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include "huffman.h"
-#include "array.h"
+#include "bitstream.h"
 
 typedef struct frequency_s
 {
@@ -88,7 +88,7 @@ frequency_t* huffman_build_tree(frequency_t** freqs)
     return retval;
 }
 
-bool huffman_encode_byte(frequency_t* root, unsigned char byte, array_t* acc)
+bool huffman_encode_byte(frequency_t* root, unsigned char byte, bitstream_t* acc)
 {
     if(root == NULL)
     {
@@ -100,8 +100,7 @@ bool huffman_encode_byte(frequency_t* root, unsigned char byte, array_t* acc)
         return true;
     }
 
-    unsigned char right_c = 0x1;
-    array_append(acc, &right_c);
+    bitstream_append(acc, true);
 
     bool right_result = huffman_encode_byte(root->right, byte, acc);
     if(right_result)
@@ -109,10 +108,9 @@ bool huffman_encode_byte(frequency_t* root, unsigned char byte, array_t* acc)
         return right_result;
     }
 
-    array_pop(acc);
+    bitstream_pop(acc);
 
-    unsigned char left_c = 0x0;
-    array_append(acc, &left_c);
+    bitstream_append(acc, false);
 
     bool left_result = huffman_encode_byte(root->left, byte, acc);
     if(left_result)
@@ -120,7 +118,7 @@ bool huffman_encode_byte(frequency_t* root, unsigned char byte, array_t* acc)
         return left_result;
     }
 
-    array_pop(acc);
+    bitstream_pop(acc);
 
     return false;
 }
@@ -153,7 +151,7 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
         array_append(freq_array, freqs[i]);
     }
 
-    array_t* encoded_stream = array_create(1, 6);
+    bitstream_t* encoded_stream = bitstream_create();
 
     // for now, encode as chars; should be bitstream
     for(const unsigned char* item = data; item < data + datalen; item++)
@@ -169,14 +167,22 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     free(freqs);
     freeTree(root);
 
+    array_t* length_array = array_create(4, 1);
+    array_append(length_array, &encoded_stream->pos);
+    length_array->len *= length_array->item_size;
+    length_array->capacity *= length_array->item_size;
+    length_array->item_size = 1;
+
     // FIXME: hack
     freq_array->len *= freq_array->item_size;
     freq_array->capacity *= freq_array->item_size;
     freq_array->item_size = 1;
 
-    array_append_array(freq_array, encoded_stream);
+    array_append_array(freq_array, length_array);
+    array_append_array(freq_array, encoded_stream->array);
 
-    array_free(encoded_stream);
+    bitstream_free(encoded_stream);
+    array_free(length_array);
 
     return freq_array;
 }
@@ -200,13 +206,20 @@ unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outda
 
     frequency_t* root = huffman_build_tree(freqs);
 
-    array_t* out_array = array_create(1, 10000);
-
     int spos = 0;
+
+    int bit_len = *(unsigned int*) indices;
+    indices += 4;
 
     frequency_t* new_root = root;
 
-    while(spos < datalen - 256 * sizeof(frequency_t))
+    array_t* out_array = array_create(1, bit_len / 8 + 1);
+
+    bitstream_t* bs = (bitstream_t*) malloc(sizeof(bitstream_t));
+    bs->array = array_create_from_pointer(indices, 1, datalen - 256 * sizeof(frequency_t) - 4);
+    bs->pos = 0;
+
+    while(spos < bit_len)
     {
         if(new_root->left == NULL)
         {
@@ -214,19 +227,15 @@ unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outda
             new_root = root;
         }
 
-        if(indices[spos] == 0x0)
-        {
-            new_root = new_root->left;
-            spos++;
-        }
-        else if(indices[spos] == 0x1)
+        if(bitstream_read(bs))
         {
             new_root = new_root->right;
             spos++;
         }
         else
         {
-            assert(0);
+            new_root = new_root->left;
+            spos++;
         }
     }
 
