@@ -178,6 +178,8 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     freq_array->capacity *= freq_array->item_size;
     freq_array->item_size = 1;
 
+    bitstream_array_adjust(encoded_stream);
+
     array_append_array(freq_array, length_array);
     array_append_array(freq_array, encoded_stream->array);
 

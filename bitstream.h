@@ -44,6 +44,11 @@ inline void bitstream_append(bitstream_t* bs, bool value)
     bs->pos++;
 }
 
+inline void bitstream_array_adjust(bitstream_t* bs)
+{
+    bs->array->len = bs->pos / 8 + 1;
+}
+
 inline bool bitstream_read(bitstream_t* bs)
 {
     unsigned char data = bs->array->base[bs->pos / 8] & BS_ORMASK(bs->pos);
