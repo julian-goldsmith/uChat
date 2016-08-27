@@ -27,9 +27,9 @@ int huffman_freq_sort(const void* val1, const void* val2)
         return -1;
 
     if((*freq1)->count < (*freq2)->count)
-        return -1;
-    else if((*freq1)->count > (*freq2)->count)
         return 1;
+    else if((*freq1)->count > (*freq2)->count)
+        return -1;
     else
         return 0;
 }
@@ -42,21 +42,32 @@ void buildInternalNode(frequency_t* node, frequency_t* left, frequency_t* right)
     node->val = 0;
 }
 
-frequency_t* huffman_build_tree(frequency_t* freqs)
+frequency_t* huffman_build_tree(frequency_t* freqs, frequency_t* internalNodes)
 {
-    int listLen = 256;
-    frequency_t** list = (frequency_t**) calloc(listLen, sizeof(frequency_t*));
+    int listLen = 0;
+    frequency_t** list = (frequency_t**) calloc(256, sizeof(frequency_t*));
 
     for(int i = 0; i < 256; i++)
     {
         list[i] = freqs + i;
     }
 
+    qsort(list, 256, sizeof(frequency_t*), huffman_freq_sort);
+
+    for(listLen = 0; listLen < 256 && list[listLen]->count > 0; listLen++);
+
     // FIXME FIXME FIXME: memory leak
     frequency_t* internalNodes = (frequency_t*) calloc(256, sizeof(frequency_t));
     int internalNodePos = 0;
 
-    while(listLen > 2)
+    // FIXME: generalize these cases
+    if(listLen == 1)
+    {
+        buildInternalNode(internalNodes + internalNodePos, list[0], list[1]);
+        list[0] = internalNodes + internalNodePos;
+    }
+
+    while(listLen > 1)
     {
         qsort(list, listLen, sizeof(frequency_t*), huffman_freq_sort);
         buildInternalNode(internalNodes + internalNodePos, list[0], list[1]);
@@ -73,30 +84,18 @@ frequency_t* huffman_build_tree(frequency_t* freqs)
     return retval;
 }
 
-/*
-string encodeChar(node_t root, char c, string acc = "")
-{
-	if(c == root.val)
-	{
-		return acc;
-	}
-	else if(root.left == null)
-	{
-		return null;
-	}
-
-	return encodeChar(root.left, c, acc + "0") ?? encodeChar(root.right, c, acc + "1");
-}
-*/
 array_t* huffman_encode_byte(frequency_t* root, char byte, array_t* acc)
 {
-    if(root->val == byte)
+    if(root->left == NULL || root->right == NULL)
     {
-        return acc;
-    }
-    else if(root->left == NULL || root->right == NULL)
-    {
-        return NULL;
+        if(root->val == byte)
+        {
+            return acc;
+        }
+        else
+        {
+            return NULL;
+        }
     }
 
     // FIXME: shitloads of memory leaks
@@ -153,7 +152,7 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
         array_t* acc = array_create(1, 6);
         array_t* encoded_byte = huffman_encode_byte(root, *item, acc);
 
-        array_append_array(encoded_stream, encoded_byte);
+        encoded_stream = array_append_array(encoded_stream, encoded_byte);  // FIXME: leak
 
         // FIXME: not sure when this is true
         if(acc != encoded_byte)
@@ -173,38 +172,6 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     return outbitstream;
 }
 
-/*
-string decodeChars(string s, node_t realroot)
-{
-	node_t root = realroot;
-	StringBuilder acc = new StringBuilder();
-	int spos = 0;
-
-	while(spos < s.Length)
-	{
-		if(root.left == null)
-		{
-			acc.Append(root.val);
-			root = realroot;
-		}
-
-		if(s[spos] == '0')
-		{
-			root = root.left;
-			spos++;
-		}
-		else
-		{
-			root = root.right;
-			spos++;
-		}
-	}
-
-	acc.Append(root.val);
-
-	return acc.ToString();
-}
-*/
 unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outdatalen)
 {
     frequency_t* dict = (frequency_t*) data;
@@ -228,12 +195,12 @@ unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outda
 
         if(indices[spos] == 0x0)
         {
-            root = root->left;
+            new_root = new_root->left;
             spos++;
         }
         else if(indices[spos] == 0x1)
         {
-            root = root->right;
+            new_root = new_root->right;
             spos++;
         }
         else
@@ -241,6 +208,8 @@ unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outda
             assert(0);
         }
     }
+
+    array_append(out_array, &new_root->val);
 
     // FIXME: abstraction
     unsigned char* outdata = (unsigned char*) realloc(out_array->base, out_array->len);
