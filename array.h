@@ -111,4 +111,9 @@ inline void array_pop(array_t* array)
     array->len--;
 }
 
+inline void array_clear(array_t* array)
+{
+    array->len = 0;
+}
+
 #endif // ARRAY_H_INCLUDED

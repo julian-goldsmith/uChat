@@ -116,15 +116,7 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc)
     return false;
 }
 */
-
-// keeps track of where we are
-typedef enum {ST_VAL, ST_RIGHT, ST_LEFT, ST_DONE} statew_t;
-
-typedef struct
-{
-    statew_t state;
-    node_t* node;
-} state_t;
+/*
 
 bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc)
 {
@@ -183,6 +175,72 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc)
 cleanup:
     array_free(history);
     return true;
+}*/
+
+// keeps track of where we are
+typedef enum {ST_VAL, ST_RIGHT, ST_LEFT, ST_DONE} statew_t;
+
+typedef struct
+{
+    statew_t state;
+    node_t* node;
+} state_t;
+
+bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, array_t* history)
+{
+    state_t* temp_state = (state_t*) array_get_new(history);
+    temp_state->state = ST_VAL;
+    temp_state->node = root;
+
+    while(true)
+    {
+        temp_state = array_get(history, history->len - 1);
+        state_t curr_state = { .state = temp_state->state, .node = temp_state->node };
+        array_pop(history);
+
+        if(curr_state.state == ST_VAL)
+        {
+            if(!curr_state.node->is_leaf)
+            {
+                temp_state = (state_t*) array_get_new(history);
+                temp_state->state = ST_RIGHT;
+                temp_state->node = curr_state.node;
+            }
+            else if(curr_state.node->val == byte)
+            {
+                return true;
+            }
+        }
+        else if(curr_state.state == ST_RIGHT)
+        {
+            bitstream_append(acc, true);
+
+            temp_state = (state_t*) array_get_new(history);
+            temp_state->state = ST_LEFT;
+            temp_state->node = curr_state.node;
+
+            temp_state = (state_t*) array_get_new(history);
+            temp_state->state = ST_VAL;
+            temp_state->node = curr_state.node->right;
+        }
+        else if(curr_state.state == ST_LEFT)
+        {
+            bitstream_pop(acc);
+            bitstream_append(acc, false);
+
+            temp_state = (state_t*) array_get_new(history);
+            temp_state->state = ST_DONE;
+            temp_state->node = curr_state.node;
+
+            temp_state = (state_t*) array_get_new(history);
+            temp_state->state = ST_VAL;
+            temp_state->node = curr_state.node->left;
+        }
+        else
+        {
+            bitstream_pop(acc);
+        }
+    }
 }
 
 array_t* huffman_encode(const unsigned char* data, int datalen)
@@ -204,10 +262,13 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     node_t* root = huffman_build_tree(freqs, all_nodes);
 
     bitstream_t* encoded_stream = bitstream_create();
+    array_t* history = array_create(sizeof(state_t), 8);
 
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        bool enc = huffman_encode_byte(root, *item, encoded_stream);
+        array_clear(history);
+
+        bool enc = huffman_encode_byte(root, *item, encoded_stream, history);
 
         if(enc == false)
         {
@@ -215,6 +276,7 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
         }
     }
 
+    array_free(history);
     array_free(all_nodes);
 
     bitstream_array_adjust(encoded_stream);
