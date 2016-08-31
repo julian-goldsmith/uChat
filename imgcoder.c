@@ -188,7 +188,7 @@ void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks, short numBl
 
 short ic_get_num_blocks(const macroblock_t* blocks)
 {
-    const float rmsMin = -0.0;
+    const float rmsMin = -0.0;      // FIXME: set this low due to issue with Huffman coding; doesn't like when there isn't any data
 
     for(short i = 0; i < (MB_NUM_X * MB_NUM_Y) / 16; i++)
     {
