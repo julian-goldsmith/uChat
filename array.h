@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <memory.h>
 #include <assert.h>
+#include <stdlib.h>
 
 typedef struct
 {
@@ -69,9 +70,19 @@ inline unsigned int array_append(array_t* array, void* item)
     }
 
     array->len++;
-    array_set(array, array->len - 1, item);
+
+    if(item != NULL)
+    {
+        array_set(array, array->len - 1, item);
+    }
 
     return array->len - 1;
+}
+
+inline void* array_get_new(array_t* array)
+{
+    unsigned int idx = array_append(array, NULL);
+    return (void*) (array->base + idx * array->item_size);
 }
 
 inline array_t* array_copy(array_t* array)
@@ -96,6 +107,7 @@ inline void array_append_array(array_t* array1, array_t* array2)
 
 inline void array_pop(array_t* array)
 {
+    assert(array->len > 0);
     array->len--;
 }
 

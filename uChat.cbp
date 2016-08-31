@@ -12,8 +12,13 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
+					<Add option="-pg" />
 					<Add option="-g" />
+					<Add option="-DDEBUG" />
 				</Compiler>
+				<Linker>
+					<Add option="-pg -lgmon" />
+				</Linker>
 			</Target>
 			<Target title="Release">
 				<Option output="bin/Release/uChat" prefix_auto="1" extension_auto="1" />
@@ -21,16 +26,20 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-O2" />
+					<Add option="-fexpensive-optimizations" />
+					<Add option="-O3" />
+					<Add option="-pg" />
+					<Add option="-g" />
+					<Add option="-march=native" />
 				</Compiler>
 				<Linker>
-					<Add option="-s" />
+					<Add option="-pg -lgmon" />
 				</Linker>
 			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add option="-fexceptions" />
+			<Add option="-fexceptions -std=gnu99" />
 		</Compiler>
 		<Linker>
 			<Add library="mingw32" />
@@ -42,13 +51,29 @@
 			<Add library="oleaut32" />
 			<Add library="strmiids" />
 			<Add library="uuid" />
+			<Add library="ws2_32" />
 		</Linker>
 		<Unit filename="GL/gl3w.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="GL/gl3w.h" />
 		<Unit filename="GL/glcorearb.h" />
-		<Unit filename="imgcoder.cpp" />
+		<Unit filename="array.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="array.h" />
+		<Unit filename="bitstream.h" />
+		<Unit filename="dct.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="dct.h" />
+		<Unit filename="huffman.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="huffman.h" />
+		<Unit filename="imgcoder.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="imgcoder.h" />
 		<Unit filename="imgui/imconfig.h" />
 		<Unit filename="imgui/imgui.cpp" />
@@ -62,6 +87,10 @@
 		<Unit filename="imgui/stb_textedit.h" />
 		<Unit filename="imgui/stb_truetype.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="rle.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="rle.h" />
 		<Unit filename="videoInput/videoInput.cpp" />
 		<Unit filename="videoInput/videoInput.h" />
 		<Extensions>

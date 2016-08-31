@@ -164,6 +164,8 @@ compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data
 
     *numBlocks = *(short*) uncompressed;
 
+    assert(*numBlocks > 0);
+
     compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(sizeof(compressed_macroblock_t) * *numBlocks);
 
     const unsigned char* bp = uncompressed + sizeof(short);
@@ -186,7 +188,7 @@ void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks, short numBl
 
 short ic_get_num_blocks(const macroblock_t* blocks)
 {
-    const float rmsMin = 16.0;
+    const float rmsMin = 8.0;
 
     for(short i = 0; i < (MB_NUM_X * MB_NUM_Y) / 16; i++)
     {
@@ -194,7 +196,7 @@ short ic_get_num_blocks(const macroblock_t* blocks)
             return i;
     }
 
-    return (MB_NUM_X * MB_NUM_Y) / 16;      // FIXME: make const
+    return (MB_NUM_X * MB_NUM_Y) / 8;      // FIXME: make const
 }
 
 unsigned char* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame, unsigned char* rmsView, int* totalSize)

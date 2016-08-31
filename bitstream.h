@@ -55,7 +55,7 @@ inline bool bitstream_read(bitstream_t* bs)
 
     bs->pos++;
 
-    return (bool) data;//>>(bs->pos % 8);
+    return (bool) data;
 }
 
 inline void bitstream_pop(bitstream_t* bs)
