@@ -113,30 +113,20 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
                 continue;
             }
         }
-        else if(curr_state.state == ST_RIGHT)
+        else if(curr_state.state == ST_RIGHT || curr_state.state == ST_LEFT)
         {
-            bitstream_append(acc, true);
+            if(curr_state.state == ST_LEFT)
+                bitstream_pop(acc);
+
+            bitstream_append(acc, curr_state.state == ST_RIGHT);
 
             temp_state = (state_t*) array_get_new(history);
-            temp_state->state = ST_LEFT;
+            temp_state->state = (curr_state.state == ST_RIGHT) ? ST_LEFT : ST_DONE;
             temp_state->node = curr_state.node;
 
             temp_state = (state_t*) array_get_new(history);
             temp_state->state = ST_RIGHT;
-            temp_state->node = curr_state.node->right;
-        }
-        else if(curr_state.state == ST_LEFT)
-        {
-            bitstream_pop(acc);
-            bitstream_append(acc, false);
-
-            temp_state = (state_t*) array_get_new(history);
-            temp_state->state = ST_DONE;
-            temp_state->node = curr_state.node;
-
-            temp_state = (state_t*) array_get_new(history);
-            temp_state->state = ST_RIGHT;
-            temp_state->node = curr_state.node->left;
+            temp_state->node = (curr_state.state == ST_RIGHT) ? curr_state.node->right : curr_state.node->left;
         }
         else
         {
