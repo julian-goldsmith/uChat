@@ -108,17 +108,15 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
         {
             bool val = bitstream_peek(acc);
 
-            if(curr_state.state == ST_LEFT || (curr_state.node == root && curr_state.state == ST_RIGHT))
+            if(curr_state.state == ST_LEFT || curr_state.node == root)
             {
                 bitstream_pop(acc);
             }
 
-            if(!(val == (curr_state.state == ST_RIGHT)))
+            if(curr_state.node != root && !(val == (curr_state.state == ST_RIGHT)))
             {
                 val = true;
             }
-
-            bitstream_append(acc, curr_state.state == ST_RIGHT);
 
             temp_state = (state_t*) array_get_new(history);
             temp_state->state = curr_state.state + 1;
@@ -127,6 +125,8 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
             temp_state = (state_t*) array_get_new(history);
             temp_state->state = ST_RIGHT;
             temp_state->node = (curr_state.state == ST_RIGHT) ? curr_state.node->right : curr_state.node->left;
+
+            bitstream_append(acc, curr_state.state == ST_RIGHT);
 
             if(temp_state->node->is_leaf)
             {
