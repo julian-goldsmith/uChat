@@ -104,19 +104,20 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
         state_t curr_state = { .state = temp_state->state, .node = temp_state->node };
         array_pop(history);
 
-        if(curr_state.node->is_leaf)
+        if(curr_state.state == ST_RIGHT || curr_state.state == ST_LEFT)
         {
-            if(curr_state.node->val == byte)
+            if(curr_state.node->is_leaf)
             {
-                return true;
+                if(curr_state.node->val == byte)
+                {
+                    return true;
+                }
+                else
+                {
+                    continue;
+                }
             }
-            else
-            {
-                continue;
-            }
-        }
-        else if(curr_state.state == ST_RIGHT || curr_state.state == ST_LEFT)
-        {
+
             bool val = bitstream_peek(acc);
 
             if(curr_state.state == ST_LEFT || (curr_state.node == root && curr_state.state == ST_RIGHT))
