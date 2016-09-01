@@ -82,7 +82,7 @@ node_t* huffman_build_tree(frequency_t freqs[256], array_t* all_nodes)
 }
 
 // keeps track of where we are
-typedef enum {ST_VAL, ST_RIGHT, ST_LEFT, ST_DONE} statew_t;
+typedef enum {ST_RIGHT, ST_LEFT, ST_DONE} statew_t;
 
 typedef struct
 {
@@ -93,7 +93,7 @@ typedef struct
 bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, array_t* history)
 {
     state_t* temp_state = (state_t*) array_get_new(history);
-    temp_state->state = ST_VAL;
+    temp_state->state = ST_RIGHT;
     temp_state->node = root;
 
     while(true)
@@ -102,17 +102,15 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
         state_t curr_state = { .state = temp_state->state, .node = temp_state->node };
         array_pop(history);
 
-        if(curr_state.state == ST_VAL)
+        if(curr_state.node->is_leaf)
         {
-            if(!curr_state.node->is_leaf)
-            {
-                temp_state = (state_t*) array_get_new(history);
-                temp_state->state = ST_RIGHT;
-                temp_state->node = curr_state.node;
-            }
-            else if(curr_state.node->val == byte)
+            if(curr_state.node->val == byte)
             {
                 return true;
+            }
+            else
+            {
+                continue;
             }
         }
         else if(curr_state.state == ST_RIGHT)
@@ -124,7 +122,7 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
             temp_state->node = curr_state.node;
 
             temp_state = (state_t*) array_get_new(history);
-            temp_state->state = ST_VAL;
+            temp_state->state = ST_RIGHT;
             temp_state->node = curr_state.node->right;
         }
         else if(curr_state.state == ST_LEFT)
@@ -137,7 +135,7 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
             temp_state->node = curr_state.node;
 
             temp_state = (state_t*) array_get_new(history);
-            temp_state->state = ST_VAL;
+            temp_state->state = ST_RIGHT;
             temp_state->node = curr_state.node->left;
         }
         else
@@ -239,7 +237,7 @@ unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outda
             new_root = new_root->left;
         }
 
-        if(new_root->left == NULL)
+        if(new_root->is_leaf)
         {
             array_append(out_array, &new_root->val);
             new_root = root;
@@ -249,8 +247,6 @@ unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outda
     }
 
     array_free(all_nodes);
-
-    array_append(out_array, &new_root->val);
 
     // FIXME: abstraction
     unsigned char* outdata = (unsigned char*) realloc(out_array->base, out_array->len);

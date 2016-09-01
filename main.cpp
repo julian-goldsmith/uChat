@@ -77,34 +77,7 @@ int main(int, char**)
     int totalSize = 0;
     int numFrames = 1;
     float avgSize = 0.0f;
-/*
-	WSADATA wsa;
-	SOCKET s;
-
-	if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
-	{
-		printf("Failed. Error Code : %d",WSAGetLastError());
-		return 1;
-	}
-
-	if((s = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET)
-	{
-		printf("Could not create socket : %d" , WSAGetLastError());
-		return 1;
-	}
-
-	struct sockaddr_in server;
-
-	server.sin_addr.s_addr = inet_addr("108.61.193.139");
-	server.sin_family = AF_INET;
-	server.sin_port = htons(7777);
-
-	//Connect to remote server
-	if (connect(s, (struct sockaddr *)&server , sizeof(server)) < 0)
-	{
-		printf("connect error\n");
-		return 1;
-	}*/
+    float avgEncodeTime = 0.0f;
 
     // Main loop
     bool done = false;
@@ -126,15 +99,16 @@ int main(int, char**)
 
             vi.getPixels(0, frame, true, true);
 
+            int encodeTimeTemp = SDL_GetTicks();
             unsigned char* encodedImage = ic_encode_image(frame, prevframe, rmsView, &totalSize);
+            encodeTimeTemp = SDL_GetTicks() - encodeTimeTemp;
+
             ic_decode_image(prevframe, encodedImage, totalSize, decodedframe);
-            /*if(send(s, (const char*) encodedImage, totalSize, 0) < 0)
-            {
-                printf("Send failed\n");
-                return 1;
-            }*/
+
             free(encodedImage);
+
             avgSize = ((avgSize * (numFrames - 1)) + totalSize) / numFrames;
+            avgEncodeTime = ((avgEncodeTime * (numFrames - 1)) + encodeTimeTemp) / numFrames;
 
             GLint last_texture;
             glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
@@ -166,6 +140,9 @@ int main(int, char**)
 
         ImGui::SameLine();
         ImGui::Text("Avg frame size: %i", (int) avgSize);
+
+        ImGui::SameLine();
+        ImGui::Text("Avg encode time: %i", (int) avgEncodeTime);
 
         ImGui::Image((void *)(intptr_t)rawinput_id, ImVec2(640, 480));
 
