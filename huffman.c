@@ -118,23 +118,26 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
                 val = true;
             }
 
-            temp_state = (state_t*) array_get_new(history);
-            temp_state->state = curr_state.state + 1;
-            temp_state->node = curr_state.node;
+            state_t* updated_state = (state_t*) array_get_new(history);
+            updated_state->state = curr_state.state + 1;
+            updated_state->node = curr_state.node;
 
-            temp_state = (state_t*) array_get_new(history);
-            temp_state->state = ST_RIGHT;
-            temp_state->node = (curr_state.state == ST_RIGHT) ? curr_state.node->right : curr_state.node->left;
+            node_t* tnode = (curr_state.state == ST_RIGHT) ? curr_state.node->right : curr_state.node->left;
 
             bitstream_append(acc, curr_state.state == ST_RIGHT);
 
-            if(temp_state->node->is_leaf)
+            if(tnode->is_leaf)
             {
-                array_pop(history);
-                if(temp_state->node->val == byte)
+                if(tnode->val == byte)
                 {
                     return true;
                 }
+            }
+            else
+            {
+                state_t* new_state = (state_t*) array_get_new(history);
+                new_state->state = ST_RIGHT;
+                new_state->node = tnode;
             }
         }
         else
