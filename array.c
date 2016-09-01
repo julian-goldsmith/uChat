@@ -17,6 +17,7 @@ void array_clear(array_t* array);
 bitstream_t* bitstream_create();
 void bitstream_append(bitstream_t* bs, bool value);
 bool bitstream_read(bitstream_t* bs);
-void bitstream_pop(bitstream_t* bs);
+bool bitstream_pop(bitstream_t* bs);
 void bitstream_free(bitstream_t* bs);
 void bitstream_array_adjust(bitstream_t* bs);
+bool bitstream_peek(bitstream_t* bs);

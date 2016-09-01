@@ -49,19 +49,29 @@ inline void bitstream_array_adjust(bitstream_t* bs)
     bs->array->len = bs->pos / 8 + 1;
 }
 
-inline bool bitstream_read(bitstream_t* bs)
+inline bool bitstream_peek(bitstream_t* bs)
 {
-    unsigned char data = bs->array->base[bs->pos / 8] & BS_ORMASK(bs->pos);
+    unsigned char data = bs->array->base[(bs->pos-1) / 8] & BS_ORMASK((bs->pos-1));
 
-    bs->pos++;
-
-    return (bool) data;
+    return (bool) (data != 0 ? true : false);
 }
 
-inline void bitstream_pop(bitstream_t* bs)
+inline bool bitstream_read(bitstream_t* bs)
 {
-    // FIXME: overflow
+    bs->pos++;
+
+    bool temp = bitstream_peek(bs);
+
+    return temp;
+}
+
+inline bool bitstream_pop(bitstream_t* bs)
+{
+    bool temp = bitstream_peek(bs);
+
     bs->pos--;
+
+    return temp;
 }
 
 #endif // BITSTREAM_H_INCLUDED

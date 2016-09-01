@@ -96,6 +96,8 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
     temp_state->state = ST_RIGHT;
     temp_state->node = root;
 
+    bitstream_append(acc, true);
+
     while(true)
     {
         temp_state = array_get(history, history->len - 1);
@@ -115,13 +117,22 @@ bool huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
         }
         else if(curr_state.state == ST_RIGHT || curr_state.state == ST_LEFT)
         {
-            if(curr_state.state == ST_LEFT)
+            bool val = bitstream_peek(acc);
+
+            if(curr_state.state == ST_LEFT || (curr_state.node == root && curr_state.state == ST_RIGHT))
+            {
                 bitstream_pop(acc);
+            }
+
+            if(!(val == (curr_state.state == ST_RIGHT)))
+            {
+                val = true;
+            }
 
             bitstream_append(acc, curr_state.state == ST_RIGHT);
 
             temp_state = (state_t*) array_get_new(history);
-            temp_state->state = (curr_state.state == ST_RIGHT) ? ST_LEFT : ST_DONE;
+            temp_state->state = curr_state.state + 1;
             temp_state->node = curr_state.node;
 
             temp_state = (state_t*) array_get_new(history);
