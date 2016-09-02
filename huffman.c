@@ -90,7 +90,7 @@ typedef struct
     node_t* node;
 } state_t;
 
-void huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, array_t* history)
+void huffman_encode_byte(node_t* root, unsigned char byte, array_t* history)
 {
     state_t* initial_state = (state_t*) array_get_new(history);
     initial_state->state = ST_RIGHT;
@@ -99,37 +99,22 @@ void huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
     while(true)
     {
         // put our state in a local variable, so it's not overwritten
-        state_t* temp_state = array_get(history, history->len - 1);
-        state_t curr_state = { .state = temp_state->state, .node = temp_state->node };
-        array_pop(history);
+        state_t* curr_state = array_get(history, history->len - 1);
 
-        if(curr_state.state == ST_RIGHT || curr_state.state == ST_LEFT)
+        if(curr_state->state == ST_RIGHT || curr_state->state == ST_LEFT)
         {
-            // if we're going from right node to left node, get rid of right node bit
-            if(curr_state.state == ST_LEFT)
+            node_t* next_node = (curr_state->state == ST_RIGHT) ? curr_state->node->right : curr_state->node->left;
+
+            // update current state
+            curr_state->state = curr_state->state + 1;
+
+            // if we have the value we want, bail out; if we have a non-leaf node, save;
+            //     otherwise, continue and don't save next state
+            if(next_node->is_leaf && next_node->val == byte)
             {
-                bitstream_pop(acc);
+                return;
             }
-
-            // update & save current state
-            state_t* updated_state = (state_t*) array_get_new(history);
-            updated_state->state = curr_state.state + 1;
-            updated_state->node = curr_state.node;
-
-            // emit current bit
-            bitstream_append(acc, curr_state.state == ST_RIGHT);
-
-            node_t* next_node = (curr_state.state == ST_RIGHT) ? curr_state.node->right : curr_state.node->left;
-
-            if(next_node->is_leaf)
-            {
-                // if we have the value we want, bail out; otherwise, continue and don't save next state
-                if(next_node->val == byte)
-                {
-                    return;
-                }
-            }
-            else
+            else if(!next_node->is_leaf)
             {
                 // save next state
                 state_t* next_state = (state_t*) array_get_new(history);
@@ -139,9 +124,17 @@ void huffman_encode_byte(node_t* root, unsigned char byte, bitstream_t* acc, arr
         }
         else
         {
-            // if we get here, we've tested both left and right; if so, go back to parent
-            bitstream_pop(acc);
+            array_pop(history);
         }
+    }
+}
+
+void huffman_flatten_history(array_t* history, bitstream_t* bs)
+{
+    for(int i = 0; i < history->len; i++)
+    {
+        state_t* state = (state_t*) array_get(history, i);
+        bitstream_append(bs, state->state == ST_LEFT);
     }
 }
 
@@ -170,7 +163,8 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     {
         array_clear(history);
 
-        huffman_encode_byte(root, *item, encoded_stream, history);
+        huffman_encode_byte(root, *item, history);
+        huffman_flatten_history(history, encoded_stream);
     }
 
     array_free(history);
