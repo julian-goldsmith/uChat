@@ -168,8 +168,9 @@ unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblock
     *totalSize = compressed->len;
 
     free(buffer);
+    free(compressed);
 
-    return compressed->base;        // FIXME: leak
+    return compressed->base;
 }
 
 compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data, const int datalen, short* numBlocks)
@@ -205,6 +206,11 @@ compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data
 
 void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks, short numBlocks)
 {
+    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
+    {
+        free(cblock->rle_data);
+    }
+
     free(cblocks);
 }
 
@@ -270,5 +276,5 @@ void ic_decode_image(const unsigned char* prevFrame, const unsigned char* data, 
         }
     }
 
-    free(blocks);
+    ic_clean_up_compressed_blocks(blocks, numBlocks);
 }
