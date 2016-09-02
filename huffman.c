@@ -13,7 +13,6 @@ typedef struct node_s
     bool is_leaf;
     struct node_s* left;
     struct node_s* right;
-    struct node_s* parent;
     unsigned char val;
 } node_t;
 
@@ -21,7 +20,7 @@ typedef struct
 {
     unsigned int count;
     unsigned char val;
-} frequency_t;
+} __attribute__((packed)) frequency_t;
 
 int huffman_freq_sort(const void* val1, const void* val2)
 {
@@ -43,11 +42,7 @@ node_t* buildInternalNode(node_t* left, node_t* right, array_t* all_nodes)
     node->is_leaf = false;
     node->left = left;
     node->right = right;
-    node->parent = NULL;
     node->val = 0;
-
-    node->left->parent = node;
-    node->right->parent = node;
 
     return node;
 }
@@ -65,7 +60,6 @@ node_t* huffman_build_tree(frequency_t freqs[256], array_t* all_nodes)
         list[i]->is_leaf = true;
         list[i]->left = NULL;
         list[i]->right = NULL;
-        list[i]->parent = NULL;
     }
 
     while(listLen > 1)
@@ -90,7 +84,7 @@ typedef struct
     node_t* node;
 } state_t;
 
-void huffman_encode_byte(node_t* root, unsigned char byte, array_t* history)
+void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_t* history)
 {
     state_t* initial_state = (state_t*) array_get_new(history);
     initial_state->state = ST_RIGHT;
@@ -114,9 +108,8 @@ void huffman_encode_byte(node_t* root, unsigned char byte, array_t* history)
             {
                 return;
             }
-            else if(!next_node->is_leaf)
+            else if(!next_node->is_leaf && next_node->count >= count)
             {
-                // save next state
                 state_t* next_state = (state_t*) array_get_new(history);
                 next_state->state = ST_RIGHT;
                 next_state->node = next_node;
@@ -163,7 +156,7 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     {
         array_clear(history);
 
-        huffman_encode_byte(root, *item, history);
+        huffman_encode_byte(root, *item, freqs[*item].count, history);
         huffman_flatten_history(history, encoded_stream);
     }
 
