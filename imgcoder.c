@@ -20,11 +20,11 @@ int ic_sort_blocks(const void* val1, const void* val2)
 
 void ic_calculate_block_rms(macroblock_t* block, const unsigned char* prevFrame)
 {
-    float blockAvg[3];
+    int blockAvg[3];
 
-    blockAvg[0] = 0.0;
-    blockAvg[1] = 0.0;
-    blockAvg[2] = 0.0;
+    blockAvg[0] = 0;
+    blockAvg[1] = 0;
+    blockAvg[2] = 0;
 
     for(int blx = 0; blx < MB_SIZE; blx++)
     {
@@ -32,9 +32,9 @@ void ic_calculate_block_rms(macroblock_t* block, const unsigned char* prevFrame)
         {
             int frameBase = 3 * ((block->mb_y * MB_SIZE + bly) * 640 + (block->mb_x * MB_SIZE + blx));
 
-            float dr = block->blockData[blx][bly][0] - prevFrame[frameBase];
-            float dg = block->blockData[blx][bly][1] - prevFrame[frameBase + 1];
-            float db = block->blockData[blx][bly][2] - prevFrame[frameBase + 2];
+            char dr = block->blockData[blx][bly][0] - prevFrame[frameBase];
+            char dg = block->blockData[blx][bly][1] - prevFrame[frameBase + 1];
+            char db = block->blockData[blx][bly][2] - prevFrame[frameBase + 2];
 
             blockAvg[0] += dr * dr;
             blockAvg[1] += dg * dg;
@@ -42,8 +42,8 @@ void ic_calculate_block_rms(macroblock_t* block, const unsigned char* prevFrame)
         }
     }
 
-    block->rms = sqrt(blockAvg[0] / (MB_SIZE * MB_SIZE)) + sqrt(blockAvg[1] / (MB_SIZE * MB_SIZE)) +
-                 sqrt(blockAvg[2] / (MB_SIZE * MB_SIZE));
+    block->rms = sqrtf((float) blockAvg[0] / (MB_SIZE * MB_SIZE)) + sqrtf((float) blockAvg[1] / (MB_SIZE * MB_SIZE)) +
+                 sqrtf((float) blockAvg[2] / (MB_SIZE * MB_SIZE));
 }
 
 void ic_build_block(macroblock_t* block, const unsigned char* imgIn)
@@ -91,6 +91,8 @@ void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView, short numBl
     int bnum = 0;
     for(const macroblock_t* block = blocks; block < blocks + (MB_NUM_X * MB_NUM_Y); block++)
     {
+        float val = (block->rms / rmsMax);
+
         for(int x = 0; x < MB_SIZE; x++)
         {
             for(int y = 0; y < MB_SIZE; y++)
@@ -100,14 +102,14 @@ void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView, short numBl
                 if(bnum < numBlocks)
                 {
                     rmsView[frameBase] = 0;
-                    rmsView[frameBase + 1] = 256 * (block->rms / rmsMax);
+                    rmsView[frameBase + 1] = 256 * val;
                     rmsView[frameBase + 2] = 0;
                 }
                 else
                 {
-                    rmsView[frameBase] = 256 * (block->rms / rmsMax);
-                    rmsView[frameBase + 1] = 256 * (block->rms / rmsMax);
-                    rmsView[frameBase + 2] = 256 * (block->rms / rmsMax);
+                    rmsView[frameBase] = 256 * val;
+                    rmsView[frameBase + 1] = 256 * val;
+                    rmsView[frameBase + 2] = 256 * val;
                 }
             }
         }
