@@ -167,10 +167,11 @@ unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblock
     array_t* compressed = huffman_encode(buffer, pos);
     *totalSize = compressed->len;
 
+    unsigned char* retval = compressed->base;
     free(buffer);
     free(compressed);
 
-    return compressed->base;
+    return retval;
 }
 
 compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data, const int datalen, short* numBlocks)
