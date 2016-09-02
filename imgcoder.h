@@ -18,7 +18,8 @@ typedef struct
 {
     unsigned char mb_x;
     unsigned char mb_y;
-    short blockDataQuant[MB_SIZE][MB_SIZE][3];
+    short rle_size;
+    short* rle_data;
 } compressed_macroblock_t;
 
 #ifdef __cplusplus
