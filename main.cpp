@@ -16,16 +16,19 @@
 #include "imgcoder.h"
 #include "dct.h"
 
-int totalSize = 0;
-int numFrames = 1;
+typedef struct
+{
+    unsigned char* encoded_frame;
+    unsigned char* raw_frame;
+    unsigned char* rms_view;
+    int total_size;
+    int numFrames;
+} frame_data_t;
+
 float avgSize = 0.0f;
 float avgEncodeTime = 0.0f;
 
 pthread_mutex_t sync_mutex;
-
-unsigned char* encoded_frame;
-unsigned char* raw_frame;
-unsigned char* rms_view;
 
 SDL_Window* init_ui(SDL_GLContext* glcontext, GLuint* rawinput_id, GLuint* decoded_id, GLuint* rmsView_id)
 {
@@ -62,11 +65,16 @@ SDL_Window* init_ui(SDL_GLContext* glcontext, GLuint* rawinput_id, GLuint* decod
     return window;
 }
 
-void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsigned char* prev_frame)
+void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsigned char* prev_frame, frame_data_t* data)
 {
     unsigned char* decoded_frame = (unsigned char*) malloc(3 * 640 * 480);      // FIXME: don't hardcode
 
-    ic_decode_image(prev_frame, encoded_frame, totalSize, decoded_frame);
+    if(data->encoded_frame == NULL)
+    {
+        return;
+    }
+
+    ic_decode_image(prev_frame, data->encoded_frame, data->total_size, decoded_frame);
     memcpy(prev_frame, decoded_frame, 3 * 640 * 480);       // FIXME: don't hardcode
 
     GLint last_texture;
@@ -74,7 +82,7 @@ void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsi
 
     glBindTexture(GL_TEXTURE_2D, rawinput_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, raw_frame);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, data->raw_frame);
 
     glBindTexture(GL_TEXTURE_2D, decoded_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -82,7 +90,7 @@ void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsi
 
     glBindTexture(GL_TEXTURE_2D, rmsView_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, rms_view);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, data->rms_view);
 
     glBindTexture(GL_TEXTURE_2D, last_texture);
 
@@ -90,9 +98,14 @@ void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsi
 }
 
 void update_ui(SDL_Window* window, GLuint rmsView_id, GLuint rawinput_id, GLuint decoded_id,
-               int totalSize, int avgSize, int avgEncodeTime)
+               int avgSize, int avgEncodeTime, frame_data_t* data)
 {
-    ImGui_ImplSdlGL3_NewFrame(window);
+    // update stats
+    if(data->numFrames > 0)
+    {
+        avgSize = ((avgSize * (data->numFrames - 1)) + data->total_size) / data->numFrames;
+        //avgEncodeTime = ((avgEncodeTime * (data->numFrames - 1)) + encodeTimeTemp) / data->numFrames;
+    }
 
     bool show_another_window = false;
     ImGui::SetNextWindowSize(ImVec2(1280,700));
@@ -101,13 +114,13 @@ void update_ui(SDL_Window* window, GLuint rmsView_id, GLuint rawinput_id, GLuint
     ImGui::Image((void *)(intptr_t)rmsView_id, ImVec2(640, 480));
 
     ImGui::SameLine();
-    ImGui::Text("Last frame size: %i", totalSize);
+    ImGui::Text("Last frame size: %i", data->total_size);
 
     ImGui::SameLine();
     ImGui::Text("Avg frame size: %i", (int) avgSize);
 
-    ImGui::SameLine();
-    ImGui::Text("Avg encode time: %i", (int) avgEncodeTime);
+    //ImGui::SameLine();
+    //ImGui::Text("Avg encode time: %i", (int) avgEncodeTime);
 
     ImGui::Image((void *)(intptr_t)rawinput_id, ImVec2(640, 480));
 
@@ -131,15 +144,17 @@ void finish_frame(SDL_Window* window)
 
 void* run_frame(void* param)
 {
+    frame_data_t* data = (frame_data_t*) param;
+    unsigned char* encoded_frame = data->encoded_frame;
+    unsigned char* raw_frame = data->raw_frame;
+    unsigned char* rms_view = data->rms_view;
+
     videoInput vi;
 
     vi.setupDevice(0, 640, 480);
     vi.setUseCallback(true);
 
     unsigned char* prev_frame = (unsigned char*) malloc(vi.getSize(0));
-    raw_frame = (unsigned char*) malloc(vi.getSize(0));
-    //decoded_frame = (unsigned char*) malloc(vi.getSize(0));
-    rms_view = (unsigned char*) malloc(vi.getSize(0));
 
     vi.getPixels(0, prev_frame, true, true);
 
@@ -149,7 +164,7 @@ void* run_frame(void* param)
         {
             pthread_mutex_lock(&sync_mutex);
 
-            numFrames++;
+            data->numFrames++;
 
             vi.getPixels(0, raw_frame, true, true);
 
@@ -160,17 +175,13 @@ void* run_frame(void* param)
 
             int encodeTimeTemp = SDL_GetTicks();
 
-            encoded_frame = ic_encode_image(raw_frame, prev_frame, rms_view, &totalSize);
+            encoded_frame = ic_encode_image(raw_frame, prev_frame, rms_view, &data->total_size);
 
             encodeTimeTemp = SDL_GetTicks() - encodeTimeTemp;
 
             memcpy(prev_frame, raw_frame, vi.getSize(0));
 
             pthread_mutex_unlock(&sync_mutex);
-
-            // update stats
-            avgSize = ((avgSize * (numFrames - 1)) + totalSize) / numFrames;
-            avgEncodeTime = ((avgEncodeTime * (numFrames - 1)) + encodeTimeTemp) / numFrames;
         }
     }
 
@@ -189,6 +200,11 @@ int main(int, char**)
 
     dct_precompute_matrix();
 
+    frame_data_t* data = (frame_data_t*) calloc(1, sizeof(frame_data_t));
+    data->raw_frame = (unsigned char*) malloc(3*640*480);
+    //decoded_frame = (unsigned char*) malloc(vi.getSize(0));
+    data->rms_view = (unsigned char*) malloc(3*640*480);
+
     // Main loop
     bool done = false;
 
@@ -196,7 +212,7 @@ int main(int, char**)
 
     pthread_mutex_init(&sync_mutex, NULL);
 
-    int rc = pthread_create(&thread, NULL, run_frame, NULL);
+    int rc = pthread_create(&thread, NULL, run_frame, data);
     if(rc)
     {
         printf("Unable to create thread: %i\n", rc);
@@ -216,10 +232,12 @@ int main(int, char**)
         }
 
         pthread_mutex_lock(&sync_mutex);
-        update_views(rawinput_id, decoded_id, rmsView_id, prev_frame);
+        update_views(rawinput_id, decoded_id, rmsView_id, prev_frame, data);
         pthread_mutex_unlock(&sync_mutex);
 
-        update_ui(window, rmsView_id, rawinput_id, decoded_id, totalSize, (int) avgSize, (int) avgEncodeTime);
+        ImGui_ImplSdlGL3_NewFrame(window);
+
+        update_ui(window, rmsView_id, rawinput_id, decoded_id, (int) avgSize, (int) avgEncodeTime, data);
 
         finish_frame(window);
     }
@@ -243,8 +261,6 @@ int main(int, char**)
     {
         printf("Unable to cancel mutex: %i\n", err);
     }
-
-    pthread_exit(NULL);
 
     return 0;
 }
