@@ -18,15 +18,16 @@
 
 typedef struct
 {
+    unsigned char* decoded_frame;
     unsigned char* encoded_frame;
     unsigned char* raw_frame;
     unsigned char* rms_view;
     int total_size;
-    int numFrames;
+    int num_frames;
+    int last_encode_time;
+    float avg_size;
+    float avg_encode_time;
 } frame_data_t;
-
-float avgSize = 0.0f;
-float avgEncodeTime = 0.0f;
 
 pthread_mutex_t sync_mutex;
 
@@ -67,15 +68,18 @@ SDL_Window* init_ui(SDL_GLContext* glcontext, GLuint* rawinput_id, GLuint* decod
 
 void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsigned char* prev_frame, frame_data_t* data)
 {
-    unsigned char* decoded_frame = (unsigned char*) malloc(3 * 640 * 480);      // FIXME: don't hardcode
+    if(data->decoded_frame == NULL)
+    {
+        data->decoded_frame = (unsigned char*) malloc(3 * 640 * 480);      // FIXME: don't hardcode
+    }
 
     if(data->encoded_frame == NULL)
     {
         return;
     }
 
-    ic_decode_image(prev_frame, data->encoded_frame, data->total_size, decoded_frame);
-    memcpy(prev_frame, decoded_frame, 3 * 640 * 480);       // FIXME: don't hardcode
+    ic_decode_image(prev_frame, data->encoded_frame, data->total_size, data->decoded_frame);
+    memcpy(prev_frame, data->decoded_frame, 3 * 640 * 480);       // FIXME: don't hardcode
 
     GLint last_texture;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
@@ -86,27 +90,17 @@ void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsi
 
     glBindTexture(GL_TEXTURE_2D, decoded_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, decoded_frame);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, data->decoded_frame);
 
     glBindTexture(GL_TEXTURE_2D, rmsView_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, data->rms_view);
 
     glBindTexture(GL_TEXTURE_2D, last_texture);
-
-    free(decoded_frame);
 }
 
-void update_ui(SDL_Window* window, GLuint rmsView_id, GLuint rawinput_id, GLuint decoded_id,
-               int avgSize, int avgEncodeTime, frame_data_t* data)
+void update_ui(SDL_Window* window, GLuint rmsView_id, GLuint rawinput_id, GLuint decoded_id, frame_data_t* data)
 {
-    // update stats
-    if(data->numFrames > 0)
-    {
-        avgSize = ((avgSize * (data->numFrames - 1)) + data->total_size) / data->numFrames;
-        //avgEncodeTime = ((avgEncodeTime * (data->numFrames - 1)) + encodeTimeTemp) / data->numFrames;
-    }
-
     bool show_another_window = false;
     ImGui::SetNextWindowSize(ImVec2(1280,700));
     ImGui::Begin("Window", &show_another_window);
@@ -117,10 +111,10 @@ void update_ui(SDL_Window* window, GLuint rmsView_id, GLuint rawinput_id, GLuint
     ImGui::Text("Last frame size: %i", data->total_size);
 
     ImGui::SameLine();
-    ImGui::Text("Avg frame size: %i", (int) avgSize);
+    ImGui::Text("Avg frame size: %i", (int) data->avg_size);
 
-    //ImGui::SameLine();
-    //ImGui::Text("Avg encode time: %i", (int) avgEncodeTime);
+    ImGui::SameLine();
+    ImGui::Text("Avg encode time: %i", (int) data->avg_encode_time);
 
     ImGui::Image((void *)(intptr_t)rawinput_id, ImVec2(640, 480));
 
@@ -145,43 +139,51 @@ void finish_frame(SDL_Window* window)
 void* run_frame(void* param)
 {
     frame_data_t* data = (frame_data_t*) param;
-    unsigned char* encoded_frame = data->encoded_frame;
-    unsigned char* raw_frame = data->raw_frame;
-    unsigned char* rms_view = data->rms_view;
 
     videoInput vi;
 
     vi.setupDevice(0, 640, 480);
-    vi.setUseCallback(true);
 
-    unsigned char* prev_frame = (unsigned char*) malloc(vi.getSize(0));
+    data->raw_frame = (unsigned char*) malloc(vi.getSize(0));
+    data->rms_view = (unsigned char*) malloc(vi.getSize(0));
 
-    vi.getPixels(0, prev_frame, true, true);
+    unsigned char* raw_frame = data->raw_frame;
+    unsigned char* rms_view = data->rms_view;
 
     while(true)
     {
+        int loopStart = SDL_GetTicks();
         if(vi.isFrameNew(0))
         {
             pthread_mutex_lock(&sync_mutex);
 
-            data->numFrames++;
+            data->num_frames++;
 
             vi.getPixels(0, raw_frame, true, true);
 
-            if(encoded_frame != NULL)
+            if(data->encoded_frame != NULL)
             {
-                free(encoded_frame);
+                free(data->encoded_frame);
             }
 
             int encodeTimeTemp = SDL_GetTicks();
 
-            encoded_frame = ic_encode_image(raw_frame, prev_frame, rms_view, &data->total_size);
+            data->encoded_frame = ic_encode_image(raw_frame, data->decoded_frame, rms_view, &data->total_size);
 
-            encodeTimeTemp = SDL_GetTicks() - encodeTimeTemp;
-
-            memcpy(prev_frame, raw_frame, vi.getSize(0));
+            // update stats
+            data->last_encode_time = SDL_GetTicks() - encodeTimeTemp;
+            data->avg_size = ((data->avg_size * (data->num_frames - 1)) + data->total_size) / data->num_frames;
+            data->avg_encode_time = ((data->avg_encode_time * (data->num_frames - 1)) + data->last_encode_time) / data->num_frames;
 
             pthread_mutex_unlock(&sync_mutex);
+        }
+
+        int loopLen = SDL_GetTicks() - loopStart;
+
+        if(loopLen < 34)
+        {
+            // updates every 34ms ~= 30FPS
+            SDL_Delay(34 - loopLen);
         }
     }
 
@@ -201,9 +203,6 @@ int main(int, char**)
     dct_precompute_matrix();
 
     frame_data_t* data = (frame_data_t*) calloc(1, sizeof(frame_data_t));
-    data->raw_frame = (unsigned char*) malloc(3*640*480);
-    //decoded_frame = (unsigned char*) malloc(vi.getSize(0));
-    data->rms_view = (unsigned char*) malloc(3*640*480);
 
     // Main loop
     bool done = false;
@@ -237,7 +236,7 @@ int main(int, char**)
 
         ImGui_ImplSdlGL3_NewFrame(window);
 
-        update_ui(window, rmsView_id, rawinput_id, decoded_id, (int) avgSize, (int) avgEncodeTime, data);
+        update_ui(window, rmsView_id, rawinput_id, decoded_id, data);
 
         finish_frame(window);
     }
