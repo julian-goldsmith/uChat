@@ -230,9 +230,12 @@ int main(int, char**)
                 done = true;
         }
 
-        pthread_mutex_lock(&sync_mutex);
-        update_views(rawinput_id, decoded_id, rmsView_id, prev_frame, data);
-        pthread_mutex_unlock(&sync_mutex);
+        int mv = pthread_mutex_trylock(&sync_mutex);
+        if(mv == 0)     // FIXME: make sure this is EBUSY
+        {
+            update_views(rawinput_id, decoded_id, rmsView_id, prev_frame, data);
+            pthread_mutex_unlock(&sync_mutex);
+        }
 
         ImGui_ImplSdlGL3_NewFrame(window);
 
