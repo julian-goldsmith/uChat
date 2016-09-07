@@ -15,6 +15,7 @@
 #include "videoInput/videoInput.h"
 #include "imgcoder.h"
 #include "dct.h"
+#include "net.h"
 
 typedef struct
 {
@@ -78,8 +79,11 @@ void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsi
         return;
     }
 
-    ic_decode_image(prev_frame, data->encoded_frame, data->total_size, data->decoded_frame);
+    short num_blocks;
+    compressed_macroblock_t* cblocks = net_deserialize_compressed_blocks(data->encoded_frame, data->total_size, &num_blocks);
+    ic_decode_image(prev_frame, cblocks, num_blocks, data->decoded_frame);
     memcpy(prev_frame, data->decoded_frame, 3 * 640 * 480);       // FIXME: don't hardcode
+    ic_clean_up_compressed_blocks(cblocks, num_blocks);
 
     GLint last_texture;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
@@ -170,7 +174,10 @@ void* run_frame(void* param)
 
             int encodeTimeTemp = SDL_GetTicks();
 
-            encoded_frame = ic_encode_image(raw_frame, decoded_frame, rms_view, &total_size);
+            short num_blocks;
+            compressed_macroblock_t* cblocks = ic_encode_image(raw_frame, decoded_frame, rms_view, &num_blocks);
+            encoded_frame = net_serialize_compressed_blocks(cblocks, &total_size, num_blocks);
+            ic_clean_up_compressed_blocks(cblocks, num_blocks);
 
             // update stats
             last_encode_time = SDL_GetTicks() - encodeTimeTemp;

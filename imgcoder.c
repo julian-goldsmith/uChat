@@ -141,70 +141,6 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
     }
 }
 
-unsigned char* ic_stream_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize, short numBlocks)
-{
-    unsigned char* buffer = (unsigned char*) malloc(sizeof(compressed_macroblock_t));
-    int pos = 0;
-
-    *(short*) (buffer + pos) = numBlocks;
-    pos += sizeof(short);
-
-    for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
-    {
-        // FIXME: don't alloc so often
-        buffer = (unsigned char*) realloc(buffer, pos + 4 + cblock->rle_size * 2);
-
-        *(buffer + pos++) = cblock->mb_x;
-        *(buffer + pos++) = cblock->mb_y;
-
-        *(short*) (buffer + pos) = cblock->rle_size;
-        pos += 2;
-
-        memcpy(buffer + pos, cblock->rle_data, cblock->rle_size * 2);
-        pos += cblock->rle_size * 2;
-    }
-
-    array_t* compressed = huffman_encode(buffer, pos);
-    *totalSize = compressed->len;
-
-    unsigned char* retval = compressed->base;
-    free(buffer);
-    free(compressed);
-
-    return retval;
-}
-
-compressed_macroblock_t* ic_unstream_compressed_blocks(const unsigned char* data, const int datalen, short* numBlocks)
-{
-    int outdatalen;
-    unsigned char* uncompressed = huffman_decode(data, datalen, &outdatalen);
-
-    *numBlocks = *(short*) uncompressed;
-
-    assert(*numBlocks >= 0);
-
-    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(sizeof(compressed_macroblock_t) * *numBlocks);
-
-    const unsigned char* bp = uncompressed + sizeof(short);
-
-    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + *numBlocks; cblock++)
-    {
-        cblock->mb_x = *bp++;
-        cblock->mb_y = *bp++;
-
-        cblock->rle_size = *(short*) bp;
-        bp += 2;
-
-        cblock->rle_data = (short*) malloc(cblock->rle_size * 2);
-        memcpy(cblock->rle_data, bp, cblock->rle_size * 2);
-        bp += cblock->rle_size * 2;
-    }
-
-    free(uncompressed);
-
-    return cblocks;
-}
-
 void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks, short numBlocks)
 {
     for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
@@ -228,36 +164,29 @@ short ic_get_num_blocks(const macroblock_t* blocks)
     return (MB_NUM_X * MB_NUM_Y) / 8;      // FIXME: make const
 }
 
-unsigned char* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame, unsigned char* rmsView, int* totalSize)
+compressed_macroblock_t* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame, unsigned char* rmsView, short* num_blocks)
 {
     macroblock_t* blocks = (macroblock_t*) malloc(MB_NUM_X * MB_NUM_Y * sizeof(macroblock_t));
 
     ic_fill_blocks(blocks, imgIn, prevFrame);
     qsort(blocks, MB_NUM_X * MB_NUM_Y, sizeof(macroblock_t), ic_sort_blocks);
 
-    short numBlocks = ic_get_num_blocks(blocks);
-    ic_show_rms(blocks, rmsView, numBlocks);
+    *num_blocks = ic_get_num_blocks(blocks);
+    ic_show_rms(blocks, rmsView, *num_blocks);
 
-    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) calloc(numBlocks, sizeof(compressed_macroblock_t));
-    ic_compress_blocks(blocks, numBlocks, cblocks);
+    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) calloc(*num_blocks, sizeof(compressed_macroblock_t));
+    ic_compress_blocks(blocks, *num_blocks, cblocks);
 
     free(blocks);
 
-    unsigned char* buffer = ic_stream_compressed_blocks(cblocks, totalSize, numBlocks);
-
-    ic_clean_up_compressed_blocks(cblocks, numBlocks);
-
-    return buffer;
+    return cblocks;
 }
 
-void ic_decode_image(const unsigned char* prevFrame, const unsigned char* data, const int datalen, unsigned char* frameOut)
+void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock_t* cblocks, const short numBlocks, unsigned char* frameOut)
 {
     memcpy(frameOut, prevFrame, 3 * 640 * 480);
 
-    short numBlocks;
-    compressed_macroblock_t* blocks = ic_unstream_compressed_blocks(data, datalen, &numBlocks);
-
-    for(compressed_macroblock_t* block = blocks; block < blocks + numBlocks; block++)
+    for(compressed_macroblock_t* block = cblocks; block < cblocks + numBlocks; block++)
     {
         float data[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
         float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
@@ -276,6 +205,4 @@ void ic_decode_image(const unsigned char* prevFrame, const unsigned char* data, 
             }
         }
     }
-
-    ic_clean_up_compressed_blocks(blocks, numBlocks);
 }
