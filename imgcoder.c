@@ -217,7 +217,7 @@ void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks, short numBl
 
 short ic_get_num_blocks(const macroblock_t* blocks)
 {
-    const float rmsMin = 12.0;
+    const float rmsMin = 8.0;
 
     for(short i = 0; i < (MB_NUM_X * MB_NUM_Y) / 16; i++)
     {

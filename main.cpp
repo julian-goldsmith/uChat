@@ -254,8 +254,7 @@ int main(int, char**)
                 done = true;
         }
 
-        int mv = pthread_mutex_trylock(&sync_mutex);
-        if(mv == 0)     // FIXME: make sure this is EBUSY
+        if(pthread_mutex_trylock(&sync_mutex) == 0)
         {
             update_views(rawinput_id, decoded_id, rmsView_id, prev_frame, data);
             pthread_mutex_unlock(&sync_mutex);
