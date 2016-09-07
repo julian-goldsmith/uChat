@@ -28,13 +28,9 @@
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
-					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-march=native" />
 				</Compiler>
-				<Linker>
-					<Add option="-pg -lgmon" />
-				</Linker>
 			</Target>
 		</Build>
 		<Compiler>
@@ -91,6 +87,10 @@
 		<Unit filename="imgui/stb_textedit.h" />
 		<Unit filename="imgui/stb_truetype.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="net.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="net.h" />
 		<Unit filename="rle.c">
 			<Option compilerVar="CC" />
 		</Unit>

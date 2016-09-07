@@ -2,13 +2,17 @@
 #include "array.h"
 #include "huffman.h"
 
+typedef struct
+{
+    unsigned short num_blocks;
+    unsigned short frequencies[256];
+    unsigned int compressed_len;
+} packet_header_t;
+
 unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize, short numBlocks)
 {
     unsigned char* buffer = (unsigned char*) malloc(sizeof(compressed_macroblock_t));
     int pos = 0;
-
-    *(short*) (buffer + pos) = numBlocks;
-    pos += sizeof(short);
 
     for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
     {
@@ -25,30 +29,37 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
         pos += cblock->rle_size * 2;
     }
 
-    array_t* compressed = huffman_encode(buffer, pos);
-    *totalSize = compressed->len;
+    packet_header_t header;
+    header.num_blocks = numBlocks;
 
-    unsigned char* retval = compressed->base;
+    array_t* compressed = huffman_encode(buffer, pos, header.frequencies);
+    header.compressed_len = compressed->len;
+
+    unsigned char* retval = (unsigned char*) malloc(sizeof(packet_header_t) + header.compressed_len);
+    memcpy(retval, &header, sizeof(packet_header_t));
+    memcpy(retval + sizeof(packet_header_t), compressed->base, packet_header_t.compressed_len);
+
     free(buffer);
-    free(compressed);
+    array_free(compressed);
 
     return retval;
 }
 
-compressed_macroblock_t* net_deserialize_compressed_blocks(const unsigned char* data, const int datalen, short* numBlocks)
+compressed_macroblock_t* net_deserialize_compressed_blocks(const unsigned char* data, short* numBlocks)
 {
+    packet_header_t* header = (packet_header_t*) data;
+
+    assert(header.num_blocks >= 0);
+    *numBlocks = header.num_blocks;
+
     int outdatalen;
-    unsigned char* uncompressed = huffman_decode(data, datalen, &outdatalen);
+    unsigned char* uncompressed = huffman_decode(data, header.compressed_len, &outdatalen);
 
-    *numBlocks = *(short*) uncompressed;
+    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(sizeof(compressed_macroblock_t) * header.num_blocks);
 
-    assert(*numBlocks >= 0);
+    const unsigned char* bp = uncompressed;
 
-    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(sizeof(compressed_macroblock_t) * *numBlocks);
-
-    const unsigned char* bp = uncompressed + sizeof(short);
-
-    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + *numBlocks; cblock++)
+    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + header.num_blocks; cblock++)
     {
         cblock->mb_x = *bp++;
         cblock->mb_y = *bp++;

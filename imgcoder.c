@@ -186,7 +186,7 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
 {
     memcpy(frameOut, prevFrame, 3 * 640 * 480);
 
-    for(compressed_macroblock_t* block = cblocks; block < cblocks + numBlocks; block++)
+    for(const compressed_macroblock_t* block = cblocks; block < cblocks + numBlocks; block++)
     {
         float data[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
         float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));

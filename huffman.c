@@ -7,21 +7,6 @@
 #include "huffman.h"
 #include "bitstream.h"
 
-typedef struct node_s
-{
-    unsigned int count;
-    bool is_leaf;
-    struct node_s* left;
-    struct node_s* right;
-    unsigned char val;
-} node_t;
-
-typedef struct
-{
-    unsigned int count;
-    unsigned char val;
-} __attribute__((packed)) frequency_t;
-
 int huffman_freq_sort(const void* val1, const void* val2)
 {
     const node_t** freq1 = (const node_t**) val1;
@@ -47,16 +32,18 @@ node_t* buildInternalNode(node_t* left, node_t* right, array_t* all_nodes)
     return node;
 }
 
-node_t* huffman_build_tree(frequency_t freqs[256], array_t* all_nodes)
+node_t* huffman_build_tree(array_t* freqs, array_t* all_nodes)
 {
     int listLen = 256;
     node_t* list[256];
 
     for(int i = 0; i < 256; i++)
     {
+        frequency_t* freq = (frequency_t*) array_get(freqs, i);
+
         list[i] = (node_t*) array_get_new(all_nodes);
-        list[i]->val = freqs[i].val;
-        list[i]->count = freqs[i].count;
+        list[i]->val = freq->val;
+        list[i]->count = freq->count;
         list[i]->is_leaf = true;
         list[i]->left = NULL;
         list[i]->right = NULL;
@@ -133,18 +120,22 @@ void huffman_flatten_history(array_t* history, bitstream_t* bs)
 
 array_t* huffman_encode(const unsigned char* data, int datalen)
 {
-    frequency_t freqs[256];
+    array_t* freqs = array_create(sizeof(frequency_t), 256);
+    freqs->len = 256;
+
     array_t* all_nodes = array_create(sizeof(node_t), 512);
 
     for(unsigned int s = 0; s < 256; s++)
     {
-        freqs[s].val = s;
-        freqs[s].count = 0;
+        frequency_t* freq = (frequency_t*) array_get(freqs, s);
+        freq->val = s;
+        freq->count = 0;
     }
 
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        freqs[*item].count++;
+        frequency_t* freq = (frequency_t*) array_get(freqs, *item);
+        freq->count++;
     }
 
     node_t* root = huffman_build_tree(freqs, all_nodes);
@@ -156,7 +147,9 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     {
         array_clear(history);
 
-        huffman_encode_byte(root, *item, freqs[*item].count, history);
+        frequency_t* freq = (frequency_t*) array_get(freqs, *item);
+
+        huffman_encode_byte(root, *item, freq->count, history);
         huffman_flatten_history(history, encoded_stream);
     }
 
@@ -166,31 +159,41 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     bitstream_array_adjust(encoded_stream);
 
     // FIXME: hack-ish
-    array_t* freq_array = array_create_from_pointer(&freqs, 1, sizeof(frequency_t) * 256);
     array_t* length_array = array_create_from_pointer(&encoded_stream->pos, 1, 4);
 
-    array_t* out_array = array_create(1, freq_array->len + encoded_stream->array->len + length_array->len);
-    array_append_array(out_array, freq_array);
+    freqs->len *= freqs->item_size;
+    freqs->item_size = 1;
+
+    array_t* out_array = array_create(1, freqs->len + encoded_stream->array->len + length_array->len);
     array_append_array(out_array, length_array);
     array_append_array(out_array, encoded_stream->array);
 
+    for(int i = 0; i < 256; i++)
+    {
+        frequencies[i] = ((frequency_t*) array_get(freqs, i))->count;
+    }
+
     bitstream_free(encoded_stream);
+    array_free(freqs);
 
     return out_array;
 }
 
 unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outdatalen)
 {
-    frequency_t* dict = (node_t*) data;
+    frequency_t* dict = (frequency_t*) data;
     const unsigned char* indices = data + 256 * sizeof(frequency_t);
 
-    frequency_t freqs[256];
+    array_t* freqs = array_create(sizeof(frequency_t), 256);
+    freqs->len = 256;
+
     array_t* all_nodes = array_create(sizeof(node_t), 512);
 
     for(int i = 0; i < 256; i++)
     {
-        freqs[i].val = dict[i].val;
-        freqs[i].count = dict[i].count;
+        frequency_t* freq = (frequency_t*) array_get(freqs, i);
+        freq->val = dict[i].val;
+        freq->count = dict[i].count;
     }
 
     node_t* root = huffman_build_tree(freqs, all_nodes);
