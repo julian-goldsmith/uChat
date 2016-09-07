@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize, short numBlocks);
-compressed_macroblock_t* net_deserialize_compressed_blocks(const unsigned char* data, const int datalen, short* numBlocks);
+compressed_macroblock_t* net_deserialize_compressed_blocks(const unsigned char* data, short* numBlocks);
 
 #ifdef __cplusplus
 }

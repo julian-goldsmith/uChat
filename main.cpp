@@ -80,7 +80,7 @@ void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsi
     }
 
     short num_blocks;
-    compressed_macroblock_t* cblocks = net_deserialize_compressed_blocks(data->encoded_frame, data->total_size, &num_blocks);
+    compressed_macroblock_t* cblocks = net_deserialize_compressed_blocks(data->encoded_frame, &num_blocks);
     ic_decode_image(prev_frame, cblocks, num_blocks, data->decoded_frame);
     memcpy(prev_frame, data->decoded_frame, 3 * 640 * 480);       // FIXME: don't hardcode
     ic_clean_up_compressed_blocks(cblocks, num_blocks);

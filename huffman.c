@@ -32,18 +32,16 @@ node_t* buildInternalNode(node_t* left, node_t* right, array_t* all_nodes)
     return node;
 }
 
-node_t* huffman_build_tree(array_t* freqs, array_t* all_nodes)
+node_t* huffman_build_tree(frequency_t freqs[256], array_t* all_nodes)
 {
     int listLen = 256;
     node_t* list[256];
 
     for(int i = 0; i < 256; i++)
     {
-        frequency_t* freq = (frequency_t*) array_get(freqs, i);
-
         list[i] = (node_t*) array_get_new(all_nodes);
-        list[i]->val = freq->val;
-        list[i]->count = freq->count;
+        list[i]->val = freqs[i].val;
+        list[i]->count = freqs[i].count;
         list[i]->is_leaf = true;
         list[i]->left = NULL;
         list[i]->right = NULL;
@@ -118,24 +116,20 @@ void huffman_flatten_history(array_t* history, bitstream_t* bs)
     }
 }
 
-array_t* huffman_encode(const unsigned char* data, int datalen)
+array_t* huffman_encode(const unsigned char* data, int datalen, unsigned short frequencies[256], unsigned int* bit_len)
 {
-    array_t* freqs = array_create(sizeof(frequency_t), 256);
-    freqs->len = 256;
-
+    frequency_t freqs[256];
     array_t* all_nodes = array_create(sizeof(node_t), 512);
 
     for(unsigned int s = 0; s < 256; s++)
     {
-        frequency_t* freq = (frequency_t*) array_get(freqs, s);
-        freq->val = s;
-        freq->count = 0;
+        freqs[s].val = s;
+        freqs[s].count = 0;
     }
 
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        frequency_t* freq = (frequency_t*) array_get(freqs, *item);
-        freq->count++;
+        freqs[*item].count++;
     }
 
     node_t* root = huffman_build_tree(freqs, all_nodes);
@@ -147,9 +141,7 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
     {
         array_clear(history);
 
-        frequency_t* freq = (frequency_t*) array_get(freqs, *item);
-
-        huffman_encode_byte(root, *item, freq->count, history);
+        huffman_encode_byte(root, *item, freqs[*item].count, history);
         huffman_flatten_history(history, encoded_stream);
     }
 
@@ -158,57 +150,42 @@ array_t* huffman_encode(const unsigned char* data, int datalen)
 
     bitstream_array_adjust(encoded_stream);
 
-    // FIXME: hack-ish
-    array_t* length_array = array_create_from_pointer(&encoded_stream->pos, 1, 4);
-
-    freqs->len *= freqs->item_size;
-    freqs->item_size = 1;
-
-    array_t* out_array = array_create(1, freqs->len + encoded_stream->array->len + length_array->len);
-    array_append_array(out_array, length_array);
+    array_t* out_array = array_create(1, encoded_stream->array->len);
     array_append_array(out_array, encoded_stream->array);
 
     for(int i = 0; i < 256; i++)
     {
-        frequencies[i] = ((frequency_t*) array_get(freqs, i))->count;
+        frequencies[i] = freqs[i].count;
     }
 
+    *bit_len = encoded_stream->pos;
+
     bitstream_free(encoded_stream);
-    array_free(freqs);
 
     return out_array;
 }
 
-unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outdatalen)
+unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outdatalen, const unsigned short frequencies[256], unsigned int bit_len)
 {
-    frequency_t* dict = (frequency_t*) data;
-    const unsigned char* indices = data + 256 * sizeof(frequency_t);
-
-    array_t* freqs = array_create(sizeof(frequency_t), 256);
-    freqs->len = 256;
-
+    frequency_t freqs[256];
     array_t* all_nodes = array_create(sizeof(node_t), 512);
 
     for(int i = 0; i < 256; i++)
     {
-        frequency_t* freq = (frequency_t*) array_get(freqs, i);
-        freq->val = dict[i].val;
-        freq->count = dict[i].count;
+        freqs[i].val = i;
+        freqs[i].count = frequencies[i];
     }
 
     node_t* root = huffman_build_tree(freqs, all_nodes);
 
     int spos = 0;
 
-    int bit_len = *(unsigned int*) indices;
-    indices += 4;
-
     node_t* new_root = root;
 
     array_t* out_array = array_create(1, bit_len / 8 + 1);
 
     bitstream_t* bs = (bitstream_t*) malloc(sizeof(bitstream_t));
-    bs->array = array_create_from_pointer(indices, 1, datalen - 256 * sizeof(frequency_t) - 4);
+    bs->array = array_create_from_pointer(data, 1, datalen);
     bs->pos = 0;
 
     while(spos < bit_len)
