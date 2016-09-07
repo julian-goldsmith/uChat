@@ -52,6 +52,10 @@
 			<Add library="strmiids" />
 			<Add library="uuid" />
 			<Add library="ws2_32" />
+			<Add library="winmm" />
+			<Add library="gdi32" />
+			<Add library="imm32" />
+			<Add library="version" />
 		</Linker>
 		<Unit filename="GL/gl3w.c">
 			<Option compilerVar="CC" />

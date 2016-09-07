@@ -147,60 +147,59 @@ void* run_frame(void* param)
     data->raw_frame = (unsigned char*) malloc(vi.getSize(0));
     data->rms_view = (unsigned char*) malloc(vi.getSize(0));
 
-    unsigned char* decoded_frame_internal = (unsigned char*) malloc(vi.getSize(0));
-    unsigned char* encoded_frame_internal = NULL;
-    unsigned char* raw_frame_internal = (unsigned char*) malloc(vi.getSize(0));
-    unsigned char* rms_view_internal = (unsigned char*) malloc(vi.getSize(0));
-    int total_size_internal = 0;
-    int num_frames_internal = 0;
-    int last_encode_time_internal = 0;
-    float avg_size_internal = 0;
-    float avg_encode_time_internal = 0;
+    unsigned char* decoded_frame = (unsigned char*) malloc(vi.getSize(0));
+    unsigned char* encoded_frame = NULL;
+    unsigned char* raw_frame = (unsigned char*) malloc(vi.getSize(0));
+    unsigned char* rms_view = (unsigned char*) malloc(vi.getSize(0));
+    int total_size = 0;
+    int num_frames = 0;
+    int last_encode_time = 0;
+    float avg_size = 0;
+    float avg_encode_time = 0;
 
     while(true)
     {
         int loopStart = SDL_GetTicks();
         if(vi.isFrameNew(0))
         {
-            num_frames_internal++;
-
             pthread_mutex_lock(&sync_mutex);
-            memcpy(decoded_frame_internal, data->decoded_frame, vi.getSize(0));
+            memcpy(decoded_frame, data->decoded_frame, vi.getSize(0));
             pthread_mutex_unlock(&sync_mutex);
 
-            vi.getPixels(0, raw_frame_internal, true, true);
+            vi.getPixels(0, raw_frame, true, true);
 
             int encodeTimeTemp = SDL_GetTicks();
 
-            encoded_frame_internal = ic_encode_image(raw_frame_internal, decoded_frame_internal, rms_view_internal, &total_size_internal);
+            encoded_frame = ic_encode_image(raw_frame, decoded_frame, rms_view, &total_size);
 
             // update stats
-            last_encode_time_internal = SDL_GetTicks() - encodeTimeTemp;
-            avg_size_internal = ((avg_size_internal * (num_frames_internal - 1)) + total_size_internal) / num_frames_internal;
-            avg_encode_time_internal = ((avg_encode_time_internal * (num_frames_internal - 1)) + last_encode_time_internal) / num_frames_internal;
+            last_encode_time = SDL_GetTicks() - encodeTimeTemp;
+            avg_size = (avg_size * num_frames + total_size) / (num_frames + 1);
+            avg_encode_time = (avg_encode_time * num_frames + last_encode_time) / (num_frames + 1);
+            num_frames++;
 
             pthread_mutex_lock(&sync_mutex);
 
-            memcpy(data->raw_frame, raw_frame_internal, vi.getSize(0));
-            memcpy(data->rms_view, rms_view_internal, vi.getSize(0));
+            memcpy(data->raw_frame, raw_frame, vi.getSize(0));
+            memcpy(data->rms_view, rms_view, vi.getSize(0));
 
             if(data->encoded_frame != NULL)
             {
                 free(data->encoded_frame);
             }
 
-            data->encoded_frame = (unsigned char*) malloc(total_size_internal);
-            memcpy(data->encoded_frame, encoded_frame_internal, total_size_internal);
+            data->encoded_frame = (unsigned char*) malloc(total_size);
+            memcpy(data->encoded_frame, encoded_frame, total_size);
 
-            data->total_size = total_size_internal;
-            data->num_frames = num_frames_internal;
-            data->last_encode_time = last_encode_time_internal;
-            data->avg_size = avg_size_internal;
-            data->avg_encode_time = avg_encode_time_internal;
+            data->total_size = total_size;
+            data->num_frames = num_frames;
+            data->last_encode_time = last_encode_time;
+            data->avg_size = avg_size;
+            data->avg_encode_time = avg_encode_time;
 
             pthread_mutex_unlock(&sync_mutex);
 
-            free(encoded_frame_internal);
+            free(encoded_frame);
         }
 
         int loopLen = SDL_GetTicks() - loopStart;
