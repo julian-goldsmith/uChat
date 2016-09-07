@@ -2,16 +2,21 @@
 #include <stdbool.h>
 #include <xmmintrin.h>
 #include "imgcoder.h"
+#include "dct.h"
 
 float dctPrecomp[MB_SIZE][MB_SIZE];
+float quantPrecomp[MB_SIZE][MB_SIZE];
 
 void dct_precompute_matrix()
 {
+    float log16_2 = logf(16.0f) * logf(16.0f);
     for (int u = 0; u < MB_SIZE; u++)
     {
         for (int x = 0; x < MB_SIZE; x++)
         {
             dctPrecomp[u][x] = cos((float)(2*x+1) * (float)u * M_PI / (2.0 * (float) MB_SIZE));//cos(M_PI * u * (x + 0.5) / MB_SIZE);
+
+            quantPrecomp[u][x] = powf(16, -logf(u + 1) * logf(x + 1) / log16_2);
         }
     }
 }
@@ -77,12 +82,16 @@ void _dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 
 void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4], short qdata[MB_SIZE][MB_SIZE][3])
 {
-    const float quality = 16.0f;
+    const float quality = 8.0f;
 
     for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
+            data[x][y][0] *= quantPrecomp[x][y];
+            data[x][y][1] *= quantPrecomp[x][y];
+            data[x][y][2] *= quantPrecomp[x][y];
+
             if(fabs(data[x][y][0]) < quality)
             {
                 data[x][y][0] = 0;
@@ -98,9 +107,22 @@ void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4], short qdata[MB_SIZE][MB
                 data[x][y][2] = 0;
             }
 
-            qdata[x][y][0] = data[x][y][0];
-            qdata[x][y][1] = data[x][y][1];
-            qdata[x][y][2] = data[x][y][2];
+            qdata[x][y][0] = (((short) data[x][y][0]) & 0xFFFC);
+            qdata[x][y][1] = (((short) data[x][y][1]) & 0xFFFC);
+            qdata[x][y][2] = (((short) data[x][y][2]) & 0xFFFC);
+        }
+    }
+}
+
+void dct_unquantize_block(float data[MB_SIZE][MB_SIZE][4])
+{
+    for(int x = 0; x < MB_SIZE; x++)
+    {
+        for(int y = 0; y < MB_SIZE; y++)
+        {
+            data[x][y][0] /= quantPrecomp[x][y];
+            data[x][y][1] /= quantPrecomp[x][y];
+            data[x][y][2] /= quantPrecomp[x][y];
         }
     }
 }
