@@ -114,15 +114,15 @@ void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4], short qdata[MB_SIZE][MB
     }
 }
 
-void dct_unquantize_block(float data[MB_SIZE][MB_SIZE][4])
+void dct_unquantize_block(short qdata[MB_SIZE][MB_SIZE][3], float data[MB_SIZE][MB_SIZE][4])
 {
     for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            data[x][y][0] /= quantPrecomp[x][y];
-            data[x][y][1] /= quantPrecomp[x][y];
-            data[x][y][2] /= quantPrecomp[x][y];
+            data[x][y][0] = qdata[x][y][0] / quantPrecomp[x][y];
+            data[x][y][1] = qdata[x][y][1] / quantPrecomp[x][y];
+            data[x][y][2] = qdata[x][y][2] / quantPrecomp[x][y];
         }
     }
 }

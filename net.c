@@ -26,8 +26,8 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
         *(short*) (buffer + pos) = cblock->rle_size;
         pos += 2;
 
-        memcpy(buffer + pos, cblock->rle_data, cblock->rle_size * 2);
-        pos += cblock->rle_size * 2;
+        memcpy(buffer + pos, cblock->rle_data, cblock->rle_size);
+        pos += cblock->rle_size;
     }
 
     packet_header_t header;
@@ -41,8 +41,6 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     unsigned char* retval = (unsigned char*) malloc(*totalSize);
     memcpy(retval, &header, sizeof(packet_header_t));
     memcpy(retval + sizeof(packet_header_t), compressed->base, header.compressed_len);
-
-    //printf("%i, %i, %i, %i, %i\n", header.compressed_len, pos, header.bit_len, header.frequencies[0], header.frequencies[255]);
 
     free(buffer);
     array_free(compressed);
@@ -62,8 +60,6 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(const unsigned char* 
                                                  header->compressed_len, &outdatalen,
                                                  header->frequencies, header->bit_len);
 
-    //printf("%i, %i, %i, %i, %i\n", header->compressed_len, outdatalen, header->bit_len, header->frequencies[0], header->frequencies[255]);
-
     compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(sizeof(compressed_macroblock_t) * header->num_blocks);
 
     const unsigned char* bp = uncompressed;
@@ -76,9 +72,9 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(const unsigned char* 
         cblock->rle_size = *(short*) bp;
         bp += 2;
 
-        cblock->rle_data = (short*) malloc(cblock->rle_size * 2);
-        memcpy(cblock->rle_data, bp, cblock->rle_size * 2);
-        bp += cblock->rle_size * 2;
+        cblock->rle_data = (short*) malloc(cblock->rle_size);
+        memcpy(cblock->rle_data, bp, cblock->rle_size);
+        bp += cblock->rle_size;
     }
 
     free(uncompressed);

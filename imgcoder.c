@@ -4,7 +4,6 @@
 #include "imgcoder.h"
 #include "dct.h"
 #include "huffman.h"
-#include "rle.h"
 
 int ic_sort_blocks(const void* val1, const void* val2)
 {
@@ -119,6 +118,39 @@ void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView, short numBl
     }
 }
 
+short* ic_flatten_block_data(short blockDataQuant[MB_SIZE][MB_SIZE][3])
+{
+    short* ret = (short*) malloc(sizeof(short) * MB_SIZE * MB_SIZE * 3);
+    short* pos = ret;
+
+    for(int rgb = 0; rgb < 3; rgb++)
+    {
+        for(int x = 0; x < MB_SIZE; x++)
+        {
+            for(int y = 0; y < MB_SIZE; y++)
+            {
+                *pos++ = blockDataQuant[x][y][rgb];
+            }
+        }
+    }
+
+    return ret;
+}
+
+void ic_unflatten_block_data(short blockDataQuant[MB_SIZE][MB_SIZE][3], short* ret)
+{
+    for(int rgb = 0; rgb < 3; rgb++)
+    {
+        for(int x = 0; x < MB_SIZE; x++)
+        {
+            for(int y = 0; y < MB_SIZE; y++)
+            {
+                blockDataQuant[x][y][rgb] = *ret++;
+            }
+        }
+    }
+}
+
 void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macroblock_t* cblocks)
 {
     float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
@@ -135,9 +167,10 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
         dct_encode_block(block->blockData, blockDataDCT);
         dct_quantize_block(blockDataDCT, blockDataQuant);
 
-        int rle_size = 0;
-        cblock->rle_data = rle_encode_block(blockDataQuant, &rle_size);
-        cblock->rle_size = (short) rle_size;
+        //int rle_size = 0;
+        //cblock->rle_data = rle_encode_block(blockDataQuant, &rle_size);
+        cblock->rle_data = ic_flatten_block_data(blockDataQuant);
+        cblock->rle_size = sizeof(short) * MB_SIZE * MB_SIZE * 3;
     }
 }
 
@@ -188,11 +221,13 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
 
     for(const compressed_macroblock_t* block = cblocks; block < cblocks + numBlocks; block++)
     {
+        short qdata[MB_SIZE][MB_SIZE][3];
         float data[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
         float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
 
-        rle_decode_block(data, block->rle_data, block->rle_size);
-        dct_unquantize_block(data);
+        //rle_decode_block(data, block->rle_data, block->rle_size);
+        ic_unflatten_block_data(qdata, block->rle_data);
+        dct_unquantize_block(qdata, data);
         dct_decode_block(data, pixels);
 
         for(int x = 0; x < MB_SIZE; x++)
