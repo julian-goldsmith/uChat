@@ -51,9 +51,10 @@ short lz_get_code(array_t* entries, array_t* encoded)
 
 void lz_entries_clean_up(array_t* entries)
 {
-    for(array_t* entry = (array_t*) entries->base; entry < ((array_t*) entries->base) + entries->len; entry++)
+    for(int i = 0; i < entries->len; i++)
     {
-        array_free(entry);
+        array_t* entry = array_get(entries, i);
+        free(entry->base);
     }
 
     array_free(entries);
@@ -93,15 +94,15 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
     short code = lz_get_code(entries, encoded);
     array_append(out_values, &code);
 
-    //lz_entries_clean_up(entries);     // FIXME: this segfaults
+    lz_entries_clean_up(entries);     // FIXME: this segfaults
 
     return out_values;
 }
 
 array_t* lz_decode(array_t* enc_data)
 {
-    array_t* entries = lz_build_initial_dictionary();
     array_t* out_bytes = array_create(1, enc_data->len * 4);
+    array_t* entries = lz_build_initial_dictionary();
 
     short prev_code = *(short*) array_get(enc_data, 0);
     array_append(out_bytes, (unsigned char*) array_get((array_t*) array_get(entries, prev_code), 0));
@@ -115,6 +116,16 @@ array_t* lz_decode(array_t* enc_data)
             //array_append(val, (unsigned char*) array_get((array_t*) array_get(entries, prev_code), 0));
 
             //array_append(entries, val);
+
+            array_t* prev = (array_t*) array_get(entries, prev_code);
+
+            array_t* entry = (array_t*) array_get(entries, prev_code);
+            char dat = *(unsigned char*) array_get(entry, 0);
+
+            array_t* val = array_copy(prev);
+            array_append(val, &dat);
+
+            array_append(entries, val);
         }
         else
         {
@@ -134,7 +145,7 @@ array_t* lz_decode(array_t* enc_data)
         prev_code = *data;
     }
 
-    //lz_entries_clean_up(entries);
+    lz_entries_clean_up(entries);
 
     return out_bytes;
 }

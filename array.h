@@ -12,6 +12,7 @@ typedef struct
     unsigned int capacity;
     unsigned int item_size;
     unsigned char* base;
+    unsigned short magic;
 } array_t;
 
 inline array_t* array_create(unsigned int item_size, unsigned int initial_capacity)
@@ -22,6 +23,7 @@ inline array_t* array_create(unsigned int item_size, unsigned int initial_capaci
     array->capacity = initial_capacity;
     array->item_size = item_size;
     array->base = (unsigned char*) malloc(array->capacity * array->item_size);
+    array->magic = 0x1234;
 
     return array;
 }
@@ -41,6 +43,10 @@ inline array_t* array_create_from_pointer(void* pointer, unsigned int item_size,
 
 inline void array_free(array_t* array)
 {
+    if(array->magic != 0x1234)
+    {
+        assert(array->magic == 0x1234);
+    }
     free(array->base);
     free(array);
 }
