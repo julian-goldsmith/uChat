@@ -1,6 +1,7 @@
 #include "net.h"
 #include "array.h"
 #include "huffman.h"
+#include "lzw.h"
 
 array_t* lz_encode(unsigned char* file_data, int file_len);
 array_t* lz_decode(array_t* enc_data);
@@ -35,22 +36,13 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
 
     packet_header_t header;
     header.num_blocks = numBlocks;
+    header.bit_len = pos;
 
     //array_t* compressed = huffman_encode(buffer, pos, header.frequencies, &header.bit_len);
 
     array_t* compressed = lz_encode(buffer, pos);
 
     header.compressed_len = compressed->len * sizeof(short);
-    header.bit_len = pos;
-
-    array_t* uncomp = lz_decode(compressed);
-
-    if(uncomp->len != pos)
-    {
-        printf("ucp %i %i %i\n", uncomp->len, pos, header.compressed_len);
-    }
-    assert(uncomp->len == pos);
-    assert(!memcmp(buffer, uncomp->base, pos));
 
     *totalSize = sizeof(packet_header_t) + header.compressed_len;
 

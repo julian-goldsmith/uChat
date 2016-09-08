@@ -66,6 +66,10 @@
 		<Unit filename="dct.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="hashtable.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="hashtable.h" />
 		<Unit filename="huffman.c">
 			<Option compilerVar="CC" />
 		</Unit>
