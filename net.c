@@ -41,6 +41,7 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     array_t* compressed = lz_encode(buffer, pos);
 
     header.compressed_len = compressed->len * sizeof(short);
+    header.bit_len = pos;
 
     array_t* uncomp = lz_decode(compressed);
 
@@ -83,28 +84,13 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(const unsigned char* 
 
     const unsigned char* bp = uncompressed;
 
-int i = 0;
     for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + header->num_blocks; cblock++)
     {
-        i++;
-
-        if(!(bp - uncompressed < header->compressed_len))
-        {
-            printf("got %i %i", i, header->compressed_len);
-            assert(bp - uncompressed < header->compressed_len);
-        }
-
         cblock->mb_x = *bp++;
         cblock->mb_y = *bp++;
 
         cblock->rle_size = *(short*) bp;
         bp += 2;
-
-        if(!(bp - uncompressed < header->compressed_len))
-        {
-            printf("got %i %i", i, header->compressed_len);
-            assert(bp - uncompressed < header->compressed_len);
-        }
 
         cblock->rle_data = (short*) malloc(cblock->rle_size);
         memcpy(cblock->rle_data, bp, cblock->rle_size);

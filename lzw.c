@@ -74,13 +74,13 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
 
         if(lz_check_entries(entries, new_val))
         {
-            array_clear(encoded);
-            array_append_array(encoded, new_val);
-            array_free(new_val);
+            array_free(encoded);
+            encoded = new_val;
         }
         else
         {
             array_append(entries, new_val);
+            free(new_val);  // HACK
 
             short code = lz_get_code(entries, encoded);
             array_append(out_values, &code);
@@ -93,7 +93,7 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
     short code = lz_get_code(entries, encoded);
     array_append(out_values, &code);
 
-    lz_entries_clean_up(entries);     // FIXME: this segfaults
+    lz_entries_clean_up(entries);
 
     return out_values;
 }
@@ -115,7 +115,7 @@ array_t* lz_decode(array_t* enc_data)
             array_t* entry = (array_t*) array_get(entries, prev_code);
 
             array_t* val = array_copy(prev);
-            array_append_array(val, entry);
+            array_append(val, (unsigned char*) array_get(entry, 0));
 
             array_append(entries, val);
         }

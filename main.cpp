@@ -229,7 +229,20 @@ array_t* lz_encode(unsigned char* file_data, int file_len);
 array_t* lz_decode(array_t* enc_data);}
 
 int main(int, char**)
-{
+{/*
+    FILE* fin = fopen("C:\\Users\\styx\\Desktop\\CP-FAQ.txt", "r");
+    unsigned char* buf = (unsigned char*) malloc(100);
+    size_t count = fread(buf, 1, 100, fin);
+    fclose(fin);
+
+    array_t* enc = lz_encode(buf, count);
+    array_t* dec = lz_decode(enc);
+
+    assert(count == dec->len);
+    assert(!memcmp(dec->base, buf, count));
+
+    return 0;*/
+
     GLuint rawinput_id;
     GLuint decoded_id;
     GLuint rmsView_id;
