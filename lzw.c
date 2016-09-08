@@ -69,14 +69,13 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
 
     for(unsigned char* pos = file_data; pos < file_data + file_len; pos++)
     {
-        array_t* new_val = array_create(1, 5);
-        array_append_array(new_val, encoded);
+        array_t* new_val = array_copy(encoded);
         array_append(new_val, pos);
 
         if(lz_check_entries(entries, new_val))
         {
             array_clear(encoded);
-            array_append(encoded, pos);
+            array_append_array(encoded, new_val);
             array_free(new_val);
         }
         else
@@ -111,19 +110,12 @@ array_t* lz_decode(array_t* enc_data)
     {
         if(*data == entries->len)
         {
-            // FIXME
-            //array_t* val = array_copy((array_t*) array_get(entries, prev_code));
-            //array_append(val, (unsigned char*) array_get((array_t*) array_get(entries, prev_code), 0));
-
-            //array_append(entries, val);
-
             array_t* prev = (array_t*) array_get(entries, prev_code);
 
             array_t* entry = (array_t*) array_get(entries, prev_code);
-            char dat = *(unsigned char*) array_get(entry, 0);
 
             array_t* val = array_copy(prev);
-            array_append(val, &dat);
+            array_append_array(val, entry);
 
             array_append(entries, val);
         }
@@ -132,16 +124,15 @@ array_t* lz_decode(array_t* enc_data)
             array_t* prev = (array_t*) array_get(entries, prev_code);
 
             array_t* entry = (array_t*) array_get(entries, *data);
-            char dat = *(unsigned char*) array_get(entry, 0);
 
             array_t* val = array_copy(prev);
-            array_append(val, &dat);
+            array_append(val, (unsigned char*) array_get(entry, 0));
 
             array_append(entries, val);
         }
 
         array_t* entry = (array_t*) array_get(entries, *data);
-        array_append(out_bytes, (unsigned char*) array_get(entry, 0));
+        array_append_array(out_bytes, entry);
         prev_code = *data;
     }
 
