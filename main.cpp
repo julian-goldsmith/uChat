@@ -247,7 +247,7 @@ int main(int, char**)
 
     for(int i = 0; i < dec->len; i++)
     {
-        printf("%i  ", dec->base[i]);
+        printf("%c", dec->base[i]);
     }
 
     return 0;

@@ -106,22 +106,31 @@ array_t* lz_decode(array_t* enc_data)
     short prev_code = *(short*) array_get(enc_data, 0);
     array_append(out_bytes, (unsigned char*) array_get((array_t*) array_get(entries, prev_code), 0));
 
-    for(short* data = (short*) array_get(enc_data, 1); data < ((short*) array_get(enc_data, 0)) + enc_data->len; data++)
+    for(short* data = ((short*) enc_data->base) + 1; data < ((short*) enc_data->base) + enc_data->len; data++)
     {
         if(*data == entries->len)
         {
-            array_t* val = array_copy((array_t*) array_get(entries, prev_code));
-            array_append(val, (unsigned char*) array_get((array_t*) array_get(entries, prev_code), 0));
-            array_append(entries, val);
+            // FIXME
+            //array_t* val = array_copy((array_t*) array_get(entries, prev_code));
+            //array_append(val, (unsigned char*) array_get((array_t*) array_get(entries, prev_code), 0));
+
+            //array_append(entries, val);
         }
         else
         {
-            array_t* val = array_copy((array_t*) array_get(entries, prev_code));
-            array_append(val, (unsigned char*) array_get((array_t*) array_get(entries, *data), 0));// array_get(entries, *data));
+            array_t* prev = (array_t*) array_get(entries, prev_code);
+
+            array_t* entry = (array_t*) array_get(entries, *data);
+            char dat = *(unsigned char*) array_get(entry, 0);
+
+            array_t* val = array_copy(prev);
+            array_append(val, &dat);
+
             array_append(entries, val);
         }
 
-        array_append(out_bytes, (array_t*) array_get(entries, *data));
+        array_t* entry = (array_t*) array_get(entries, *data);
+        array_append(out_bytes, (unsigned char*) array_get(entry, 0));
         prev_code = *data;
     }
 
