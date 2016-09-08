@@ -16,6 +16,7 @@
 #include "imgcoder.h"
 #include "dct.h"
 #include "net.h"
+#include "array.h"
 
 typedef struct
 {
@@ -223,8 +224,34 @@ void* run_frame(void* param)
     return NULL;
 }
 
+extern "C" {
+array_t* lz_encode(unsigned char* file_data, int file_len);
+array_t* lz_decode(array_t* enc_data);}
+
 int main(int, char**)
 {
+    FILE* fin = fopen("C:\\Users\\styx\\habbo.txt", "r");
+    unsigned char* buf = (unsigned char*) malloc(100);
+    size_t count = fread(buf, 1, 100, fin);
+    fclose(fin);
+
+    array_t* enc = lz_encode(buf, count);
+    array_t* dec = lz_decode(enc);
+
+    for(int i = 0; i < enc->len; i++)
+    {
+        printf("%i  ", enc->base[i]);
+    }
+
+    printf("\n\n\n---------------------------------------------\n\n\n");
+
+    for(int i = 0; i < dec->len; i++)
+    {
+        printf("%i  ", dec->base[i]);
+    }
+
+    return 0;
+
     GLuint rawinput_id;
     GLuint decoded_id;
     GLuint rmsView_id;

@@ -66,7 +66,6 @@
 		<Unit filename="dct.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="dct.h" />
 		<Unit filename="huffman.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -86,14 +85,14 @@
 		<Unit filename="imgui/stb_rect_pack.h" />
 		<Unit filename="imgui/stb_textedit.h" />
 		<Unit filename="imgui/stb_truetype.h" />
+		<Unit filename="lzw.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="main.cpp" />
 		<Unit filename="net.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="net.h" />
-		<Unit filename="rle.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="rle.h" />
 		<Unit filename="videoInput/videoInput.cpp" />
 		<Unit filename="videoInput/videoInput.h" />

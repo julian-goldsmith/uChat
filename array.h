@@ -34,7 +34,7 @@ inline array_t* array_create_from_pointer(void* pointer, unsigned int item_size,
     array->len = len;
     array->capacity = len;
     array->item_size = item_size;
-    array->base = pointer;
+    array->base = (unsigned char*) pointer;
 
     return array;
 }
@@ -52,11 +52,7 @@ inline void* array_get(array_t* array, unsigned int idx)
 
 inline void array_set(array_t* array, unsigned int idx, void* item)
 {
-    if(idx >= array->len)
-    {
-        // FIXME: shit the bed
-        return;
-    }
+    assert(idx < array->len);
 
     memcpy(array->base + idx * array->item_size, item, array->item_size);
 }
