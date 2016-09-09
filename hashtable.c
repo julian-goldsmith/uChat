@@ -61,19 +61,9 @@ unsigned fnv_hash_1a_32 (void *key, int len, unsigned char last)
    return h;
 }
 
-unsigned int hash_func(array_t* array)
-{
-    return fnv_hash_1a_32(array->base, array->len - 1, array->base[array->len - 1]);
-}
-
-unsigned int hash_func_(array_t* array, unsigned char b)
-{
-    return fnv_hash_1a_32(array->base, array->len, b);
-}
-
 void ht_add(hash_table_t* ht, array_t* key, unsigned int val)
 {
-    unsigned int bi = hash_func(key) % HT_NUM_BUCKETS;
+    unsigned int bi = fnv_hash_1a_32(key->base, key->len - 1, key->base[key->len - 1]) % HT_NUM_BUCKETS;
     bucket_t* bucket = ht->buckets[bi];
     unsigned int blen = bucket->len;
 
@@ -88,7 +78,7 @@ void ht_add(hash_table_t* ht, array_t* key, unsigned int val)
 
 int ht_get(hash_table_t* ht, array_t* key)
 {
-    unsigned int bi = hash_func(key) % HT_NUM_BUCKETS;
+    unsigned int bi = fnv_hash_1a_32(key->base, key->len - 1, key->base[key->len - 1]) % HT_NUM_BUCKETS;
     bucket_t* bucket = ht->buckets[bi];
 
     for(int i = 0; i < bucket->len; i++)
@@ -106,7 +96,7 @@ int ht_get(hash_table_t* ht, array_t* key)
 
 int ht_get_(hash_table_t* ht, array_t* key, unsigned char b)
 {
-    unsigned int bi = hash_func_(key, b) % HT_NUM_BUCKETS;
+    unsigned int bi = fnv_hash_1a_32(key->base, key->len, b) & 8191;// % HT_NUM_BUCKETS;
     bucket_t* bucket = ht->buckets[bi];
 
     for(int i = 0; i < bucket->len; i++)

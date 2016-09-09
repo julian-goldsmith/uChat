@@ -223,6 +223,8 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
         float data[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
         float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
 
+        assert(block->rle_size > 0);
+
         ic_unflatten_block_data(qdata, block->rle_data);
         dct_unquantize_block(qdata, data);
         dct_decode_block(data, pixels);

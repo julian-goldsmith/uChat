@@ -41,33 +41,32 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
 
     for(code_pos = 0; code_pos < 256; code_pos++)
     {
-        char c = (char) code_pos;
+        unsigned char c = (char) code_pos;
 
         array_t* item = array_create(1, 1);
-        array_append(item, &c);
+        array_append1(item, &c);
 
         ht_add(ht, item, code_pos);
     }
 
     array_t* encoded = array_create(1, 5);
 
-    int a = SDL_GetTicks();
     for(unsigned char* pos = file_data; pos < file_data + file_len; pos++)
     {
         while(ht_get_(ht, encoded, *pos) != -1 && pos < file_data + file_len)
         {
-            array_append(encoded, pos);
+            array_append1(encoded, pos);
             pos++;
         }
 
         short code = ht_get(ht, encoded);
         array_append(out_values, &code);
 
-        array_append(encoded, pos);
+        array_append1(encoded, pos);
         ht_add(ht, encoded, code_pos++);
 
         encoded = array_create(1, 5);
-        array_append(encoded, pos);
+        array_append1(encoded, pos);
     }
 
     short code = ht_get(ht, encoded);
