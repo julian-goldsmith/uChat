@@ -1,7 +1,7 @@
 #ifndef HASHTABLE_H_INCLUDED
 #define HASHTABLE_H_INCLUDED
 
-#define HT_NUM_BUCKETS 2048
+#define HT_NUM_BUCKETS 8192
 
 typedef struct
 {

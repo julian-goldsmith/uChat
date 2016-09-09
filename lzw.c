@@ -32,9 +32,6 @@ void lz_entries_clean_up(array_t* entries)
     array_free(entries);
 }
 
-unsigned int hash_func(array_t* array);
-unsigned int hash_func_(array_t* array, char b);
-
 array_t* lz_encode(unsigned char* file_data, int file_len)
 {
     // leaks solved with Dr. Memory
@@ -54,24 +51,23 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
 
     array_t* encoded = array_create(1, 5);
 
+    int a = SDL_GetTicks();
     for(unsigned char* pos = file_data; pos < file_data + file_len; pos++)
     {
-        if(ht_get_(ht, encoded, *pos) != -1)
+        while(ht_get_(ht, encoded, *pos) != -1 && pos < file_data + file_len)
         {
             array_append(encoded, pos);
+            pos++;
         }
-        else
-        {
-            short code = ht_get(ht, encoded);
 
-            array_append(encoded, pos);
-            ht_add(ht, encoded, code_pos++);
+        short code = ht_get(ht, encoded);
+        array_append(out_values, &code);
 
-            array_append(out_values, &code);
+        array_append(encoded, pos);
+        ht_add(ht, encoded, code_pos++);
 
-            encoded = array_create(1, 5);
-            array_append(encoded, pos);
-        }
+        encoded = array_create(1, 5);
+        array_append(encoded, pos);
     }
 
     short code = ht_get(ht, encoded);
