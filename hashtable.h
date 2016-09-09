@@ -20,5 +20,6 @@ void ht_free(hash_table_t* ht, bool free_keys);
 unsigned int hash_func(array_t* array);
 void ht_add(hash_table_t* ht, array_t* key, unsigned int val);
 int ht_get(hash_table_t* ht, array_t* key);
+int ht_get_(hash_table_t* ht, array_t* key, unsigned char b);
 
 #endif // HASHTABLE_H_INCLUDED

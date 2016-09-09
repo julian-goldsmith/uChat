@@ -67,7 +67,7 @@ inline unsigned int array_append(array_t* array, void* item)
 {
     if(array->capacity == array->len)
     {
-        array->capacity += 5;
+        array->capacity += array->len;
         array->base = (unsigned char*) realloc(array->base, array->capacity * array->item_size);
     }
 

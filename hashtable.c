@@ -47,14 +47,36 @@ void ht_free(hash_table_t* ht, bool free_keys)
     free(ht);
 }
 
+unsigned int hash_func_(array_t* array, unsigned char b);
+
 unsigned int hash_func(array_t* array)
 {
-    unsigned int val = array->len;
+    return hash_func_(array_create_from_pointer(array->base, 1, array->len - 1), array->base[array->len - 1]);
 
-    for(int i = 0; i < array->len; i++)
+    unsigned int val = 7;
+
+    int i;
+    for(i = 0; i < array->len - 1; i++)
     {
         val ^= array->base[i] << (8 * (i % 4));
     }
+
+    val ^= array->base[i] << (8 * (i % 4));
+
+    return val;
+}
+
+unsigned int hash_func_(array_t* array, unsigned char b)
+{
+    unsigned int val = 7;
+
+    int i;
+    for(i = 0; i < array->len; i++)
+    {
+        val ^= array->base[i] << (8 * (i % 4));
+    }
+
+    val ^= b << (8 * (i % 4));
 
     return val;
 }
@@ -84,6 +106,25 @@ int ht_get(hash_table_t* ht, array_t* key)
         array_t* bk = bucket->keys[i];
 
         if(bk->len == key->len && !memcmp(bk->base, key->base, bk->len))
+        {
+            return bucket->vals[i];
+        }
+    }
+
+    return -1;
+}
+
+int ht_get_(hash_table_t* ht, array_t* key, unsigned char b)
+{
+    unsigned int bi = hash_func_(key, b) % HT_NUM_BUCKETS;
+    bucket_t* bucket = ht->buckets[bi];
+
+    for(int i = 0; i < bucket->len; i++)
+    {
+        array_t* bk = bucket->keys[i];
+
+        if(bk->len == key->len + 1 && bk->base[key->len] == b)
+        if(!memcmp(bk->base, key->base, key->len))
         {
             return bucket->vals[i];
         }

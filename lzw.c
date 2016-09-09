@@ -32,6 +32,9 @@ void lz_entries_clean_up(array_t* entries)
     array_free(entries);
 }
 
+unsigned int hash_func(array_t* array);
+unsigned int hash_func_(array_t* array, char b);
+
 array_t* lz_encode(unsigned char* file_data, int file_len)
 {
     // leaks solved with Dr. Memory
@@ -53,22 +56,19 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
 
     for(unsigned char* pos = file_data; pos < file_data + file_len; pos++)
     {
-        array_t* new_val = array_copy(encoded);
-        array_append(new_val, pos);
-
-        if(ht_get(ht, new_val) != -1)
+        if(ht_get_(ht, encoded, *pos) != -1)
         {
-            array_free(encoded);
-            encoded = new_val;
+            array_append(encoded, pos);
         }
         else
         {
-            ht_add(ht, new_val, code_pos++);
-
             short code = ht_get(ht, encoded);
+
+            array_append(encoded, pos);
+            ht_add(ht, encoded, code_pos++);
+
             array_append(out_values, &code);
 
-            array_free(encoded);
             encoded = array_create(1, 5);
             array_append(encoded, pos);
         }

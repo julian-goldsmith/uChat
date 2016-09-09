@@ -41,7 +41,7 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
 
     int lzStart = SDL_GetTicks();
     array_t* lz_compressed = lz_encode(buffer, pos);
-    printf("comp: %i\n", SDL_GetTicks() - lzStart);
+    printf("comp: %i  %i\n", SDL_GetTicks() - lzStart, pos);
 
     lz_compressed->len *= 2;
     lz_compressed->item_size = 1;
