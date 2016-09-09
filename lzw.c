@@ -95,33 +95,22 @@ array_t* lz_decode(array_t* enc_data)
     for(short* data = ((short*) enc_data->base) + 1; data < ((short*) enc_data->base) + enc_data->len; data++)
     {
         assert(*data >= 0);
+        array_t* prev = (array_t*) array_get(entries, prev_code);
+        array_t* entry = (array_t*) array_get(entries, *data);
+
         if(*data == entries->len)
         {
-            array_t* prev = (array_t*) array_get(entries, prev_code);
-
-            array_t* entry = (array_t*) array_get(entries, prev_code);
-
-            array_t* val = array_copy(prev);
-            array_append(val, array_get(entry, 0));
-
-            array_append(entries, val);
-            free(val);
-        }
-        else
-        {
-            array_t* prev = (array_t*) array_get(entries, prev_code);
-
-            array_t* entry = (array_t*) array_get(entries, *data);
-
-            array_t* val = array_copy(prev);
-            array_append(val, (unsigned char*) array_get(entry, 0));
-
-            array_append(entries, val);
-            free(val);
+            entry = prev;
         }
 
-        array_t* entry = (array_t*) array_get(entries, *data);
-        array_append_array(out_bytes, entry);
+        array_t* val = array_copy(prev);
+        array_append(val, array_get(entry, 0));
+
+        array_append(entries, val);
+        free(val);
+
+        array_t* out_entry = (array_t*) array_get(entries, *data);
+        array_append_array(out_bytes, out_entry);
         prev_code = *data;
     }
 
