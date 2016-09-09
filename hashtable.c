@@ -47,38 +47,28 @@ void ht_free(hash_table_t* ht, bool free_keys)
     free(ht);
 }
 
-unsigned int hash_func_(array_t* array, unsigned char b);
+unsigned fnv_hash_1a_32 (void *key, int len, unsigned char last)
+{
+    unsigned char *p = key;
+    unsigned h = 0x811c9dc5;
+    int i;
+
+    for ( i = 0; i < len; i++ )
+      h = ( h ^ p[i] ) * 0x01000193;
+
+    h = ( h ^ last ) * 0x01000193;
+
+   return h;
+}
 
 unsigned int hash_func(array_t* array)
 {
-    return hash_func_(array_create_from_pointer(array->base, 1, array->len - 1), array->base[array->len - 1]);
-
-    unsigned int val = 7;
-
-    int i;
-    for(i = 0; i < array->len - 1; i++)
-    {
-        val ^= array->base[i] << (8 * (i % 4));
-    }
-
-    val ^= array->base[i] << (8 * (i % 4));
-
-    return val;
+    return fnv_hash_1a_32(array->base, array->len - 1, array->base[array->len - 1]);
 }
 
 unsigned int hash_func_(array_t* array, unsigned char b)
 {
-    unsigned int val = 7;
-
-    int i;
-    for(i = 0; i < array->len; i++)
-    {
-        val ^= array->base[i] << (8 * (i % 4));
-    }
-
-    val ^= b << (8 * (i % 4));
-
-    return val;
+    return fnv_hash_1a_32(array->base, array->len, b);
 }
 
 void ht_add(hash_table_t* ht, array_t* key, unsigned int val)
@@ -123,8 +113,8 @@ int ht_get_(hash_table_t* ht, array_t* key, unsigned char b)
     {
         array_t* bk = bucket->keys[i];
 
-        if(bk->len == key->len + 1 && bk->base[key->len] == b)
-        if(!memcmp(bk->base, key->base, key->len))
+        if(bk->len == key->len + 1 && bk->base[key->len] == b &&
+           !memcmp(bk->base, key->base, key->len))
         {
             return bucket->vals[i];
         }
