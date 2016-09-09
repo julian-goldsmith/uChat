@@ -165,7 +165,7 @@ array_t* huffman_encode(const unsigned char* data, int datalen, unsigned short f
     return out_array;
 }
 
-unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outdatalen, const unsigned short frequencies[256], unsigned int bit_len)
+array_t* huffman_decode(const unsigned char* data, int datalen, const unsigned short frequencies[256], unsigned int bit_len)
 {
     frequency_t freqs[256];
     array_t* all_nodes = array_create(sizeof(node_t), 512);
@@ -210,11 +210,5 @@ unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outda
 
     array_free(all_nodes);
 
-    // FIXME: abstraction
-    unsigned char* outdata = (unsigned char*) realloc(out_array->base, out_array->len);
-    *outdatalen = out_array->len;
-
-    free(out_array);
-
-    return outdata;
+    return out_array;
 }

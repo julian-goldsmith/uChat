@@ -167,8 +167,6 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
         dct_encode_block(block->blockData, blockDataDCT);
         dct_quantize_block(blockDataDCT, blockDataQuant);
 
-        //int rle_size = 0;
-        //cblock->rle_data = rle_encode_block(blockDataQuant, &rle_size);
         cblock->rle_data = ic_flatten_block_data(blockDataQuant);
         cblock->rle_size = sizeof(short) * MB_SIZE * MB_SIZE * 3;
     }

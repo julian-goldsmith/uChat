@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 array_t* huffman_encode(const unsigned char* data, int datalen, unsigned short frequencies[256], unsigned int* bit_len);
-unsigned char* huffman_decode(const unsigned char* data, int datalen, int* outdatalen, const unsigned short frequencies[256], unsigned int bit_len);
+array_t* huffman_decode(const unsigned char* data, int datalen, const unsigned short frequencies[256], unsigned int bit_len);
 
 #ifdef __cplusplus
 }
