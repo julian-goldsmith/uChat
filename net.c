@@ -4,9 +4,6 @@
 #include "lzw.h"
 #include <SDL2/SDL.h>
 
-array_t* lz_encode(unsigned char* file_data, int file_len);
-array_t* lz_decode(array_t* enc_data);
-
 typedef struct
 {
     unsigned short num_blocks;
@@ -40,19 +37,16 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     header.bit_len = pos;
 
     array_t* lz_compressed = array_create(2, pos);
-    int lzStart = SDL_GetTicks();
+
     for(int i = 0; i < pos; i += 65536)
     {
         unsigned int tempcount = (i + 65536 > pos) ? pos - i : 65536;
-        array_t* temp = lz_encode(buffer + i, tempcount);
-        unsigned short outlen = temp->len - 1;
+        unsigned short* outlen = (unsigned short*) array_get_new(lz_compressed);
+        unsigned int oldlen = lz_compressed->len;
 
-        array_append(lz_compressed, &outlen);
-        array_append_array(lz_compressed, temp);
-
-        array_free(temp);
+        lz_encode(buffer + i, tempcount, lz_compressed);
+        *outlen = lz_compressed->len - oldlen - 1;
     }
-    printf("comp: %i  %i\n", SDL_GetTicks() - lzStart, pos);
 
     lz_compressed->len *= 2;
     lz_compressed->item_size = 1;
@@ -74,7 +68,7 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     return retval;
 }
 
-compressed_macroblock_t* net_deserialize_compressed_blocks(const unsigned char* data, short* numBlocks)
+compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, short* numBlocks)
 {
     const packet_header_t* header = (packet_header_t*) data;
 

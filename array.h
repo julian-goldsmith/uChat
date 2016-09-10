@@ -81,22 +81,6 @@ inline unsigned int array_append(array_t* array, void* item)
     return array->len - 1;
 }
 
-inline void array_append1(array_t* array, void* item)
-{
-    if(array->capacity == array->len)
-    {
-        array->capacity *= 2;
-        array->base = (unsigned char*) realloc(array->base, array->capacity);
-    }
-
-    array->len++;
-
-    if(item != NULL)
-    {
-        array->base[array->len - 1] = *(unsigned char*) item;
-    }
-}
-
 inline void* array_get_new(array_t* array)
 {
     unsigned int idx = array_append(array, NULL);

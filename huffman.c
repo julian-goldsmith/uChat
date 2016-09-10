@@ -165,7 +165,7 @@ array_t* huffman_encode(const unsigned char* data, int datalen, unsigned short f
     return out_array;
 }
 
-array_t* huffman_decode(const unsigned char* data, int datalen, const unsigned short frequencies[256], unsigned int bit_len)
+array_t* huffman_decode(unsigned char* data, int datalen, const unsigned short frequencies[256], unsigned int bit_len)
 {
     frequency_t freqs[256];
     array_t* all_nodes = array_create(sizeof(node_t), 512);

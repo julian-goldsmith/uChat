@@ -32,10 +32,9 @@ void lz_entries_clean_up(array_t* entries)
     array_free(entries);
 }
 
-array_t* lz_encode(unsigned char* file_data, int file_len)
+void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
 {
     // leaks solved with Dr. Memory
-    array_t* out_values = array_create(sizeof(short), file_len);
     hash_table_t* ht = ht_create();
     unsigned int code_pos = 0;
 
@@ -44,7 +43,7 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
         unsigned char c = (char) code_pos;
 
         array_t* item = array_create(1, 1);
-        array_append1(item, &c);
+        array_append(item, &c);
 
         ht_add(ht, item, code_pos);
     }
@@ -55,7 +54,7 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
     {
         while(pos < file_data + file_len)
         {
-            array_append1(encoded, pos);
+            array_append(encoded, pos);
 
             if(ht_get(ht, encoded) == -1)
             {
@@ -75,7 +74,7 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
             ht_add(ht, encoded, code_pos++);
 
             encoded = array_create(1, 5);
-            array_append1(encoded, pos);
+            array_append(encoded, pos);
         }
     }
 
@@ -88,8 +87,6 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
 
     ht_free(ht);
     array_free(encoded);
-
-    return out_values;
 }
 
 array_t* lz_decode(array_t* enc_data)
