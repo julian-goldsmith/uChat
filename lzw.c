@@ -53,26 +53,40 @@ array_t* lz_encode(unsigned char* file_data, int file_len)
 
     for(unsigned char* pos = file_data; pos < file_data + file_len; pos++)
     {
-        while(ht_get_(ht, encoded, *pos) != -1 && pos < file_data + file_len)
+        while(pos < file_data + file_len)
         {
             array_append1(encoded, pos);
+
+            if(ht_get(ht, encoded) == -1)
+            {
+                encoded->len--;
+                break;
+            }
+
             pos++;
         }
 
         short code = ht_get(ht, encoded);
         array_append(out_values, &code);
 
-        array_append1(encoded, pos);
-        ht_add(ht, encoded, code_pos++);
+        if(pos < file_data + file_len)
+        {
+            encoded->len++;
+            ht_add(ht, encoded, code_pos++);
 
-        encoded = array_create(1, 5);
-        array_append1(encoded, pos);
+            encoded = array_create(1, 5);
+            array_append1(encoded, pos);
+        }
     }
 
-    short code = ht_get(ht, encoded);
-    array_append(out_values, &code);
+    if(encoded->len == 1)
+    {
+        // if len is 1, last coded didn't get added
+        short code = ht_get(ht, encoded);
+        array_append(out_values, &code);
+    }
 
-    ht_free(ht, true);
+    ht_free(ht);
     array_free(encoded);
 
     return out_values;

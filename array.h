@@ -67,7 +67,7 @@ inline unsigned int array_append(array_t* array, void* item)
 {
     if(array->capacity == array->len)
     {
-        array->capacity += array->len;
+        array->capacity *= 2;
         array->base = (unsigned char*) realloc(array->base, array->capacity * array->item_size);
     }
 
@@ -85,7 +85,7 @@ inline void array_append1(array_t* array, void* item)
 {
     if(array->capacity == array->len)
     {
-        array->capacity += array->len;
+        array->capacity *= 2;
         array->base = (unsigned char*) realloc(array->base, array->capacity);
     }
 
@@ -115,11 +115,20 @@ inline array_t* array_copy(array_t* array)
 
 inline void array_append_array(array_t* array1, array_t* array2)
 {
-    if(array1->item_size != array2->item_size)
-        assert(array1->item_size == array2->item_size);
+    assert(array1->item_size == array2->item_size);
 
-    array1->capacity += array2->len;
-    array1->base = (unsigned char*) realloc(array1->base, array1->capacity * array1->item_size);
+    if(array1->capacity <= array1->len + array2->len)
+    {
+        array1->capacity *= 2;
+
+        if(array1->capacity <= array1->len + array2->len)
+        {
+            array1->capacity += array2->len;
+        }
+
+        array1->base = (unsigned char*) realloc(array1->base, array1->capacity * array1->item_size);
+    }
+
     memcpy(array1->base + array1->len * array1->item_size, array2->base, array2->len * array2->item_size);
     array1->len += array2->len;
 }

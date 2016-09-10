@@ -39,8 +39,19 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     header.num_blocks = numBlocks;
     header.bit_len = pos;
 
+    array_t* lz_compressed = array_create(2, pos);
     int lzStart = SDL_GetTicks();
-    array_t* lz_compressed = lz_encode(buffer, pos);
+    for(int i = 0; i < pos; i += 65536)
+    {
+        unsigned int tempcount = (i + 65536 > pos) ? pos - i : 65536;
+        array_t* temp = lz_encode(buffer + i, tempcount);
+        unsigned short outlen = temp->len - 1;
+
+        array_append(lz_compressed, &outlen);
+        array_append_array(lz_compressed, temp);
+
+        array_free(temp);
+    }
     printf("comp: %i  %i\n", SDL_GetTicks() - lzStart, pos);
 
     lz_compressed->len *= 2;
@@ -77,7 +88,19 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(const unsigned char* 
     unhuff->item_size = sizeof(short);
     unhuff->len /= 2;
 
-    array_t* arr = lz_decode(unhuff);
+    array_t* arr = array_create(1, unhuff->len * 2);
+
+    unsigned int j = 0;
+    while(j < unhuff->len)
+    {
+        unsigned short templen = *(unsigned short*) array_get(unhuff, j++) + 1;
+        array_t* block = array_create_from_pointer(array_get(unhuff, j), 2, templen);
+
+        array_t* temp = lz_decode(block);
+        array_append_array(arr, temp);
+
+        j += templen;
+    }
 
     unsigned char* uncompressed = arr->base;
 
