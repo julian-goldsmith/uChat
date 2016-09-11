@@ -10,7 +10,7 @@ extern "C" {
 
 void array_pool_init();
 array_t* array_pool_get();
-void array_pool_release(array_t* item);
+void array_pool_release_all();
 
 #ifdef __cplusplus
 }

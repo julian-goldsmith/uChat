@@ -13,14 +13,6 @@ typedef struct pool_chunk_s
     struct pool_chunk_s* next;
 } pool_chunk_t;
 
-#define aht_NUM_BUCKETS 256     // must be a power of 2
-
-typedef struct
-{
-    array_t* keys;
-    array_t* vals;
-} bucket_t;
-
 // linked list of chunks of arrays
 // chunks have bitmap of used arrays
 

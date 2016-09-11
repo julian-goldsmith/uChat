@@ -46,7 +46,7 @@ void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
         array_t* item = array_pool_get();
         array_append(item, &c);
 
-        ht_add(ht, &item, code_pos);
+        ht_add(ht, item, code_pos);
     }
 
     array_t* encoded = array_pool_get();
@@ -72,7 +72,7 @@ void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
         if(pos < file_data + file_len)
         {
             encoded->len++;
-            ht_add(ht, &encoded, code_pos++);
+            ht_add(ht, encoded, code_pos++);
 
             encoded = array_pool_get();
             array_append(encoded, pos);
