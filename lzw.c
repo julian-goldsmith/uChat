@@ -2,6 +2,7 @@
 #include "array.h"
 #include "lzw.h"
 #include "hashtable.h"
+#include "arraypool.h"
 
 array_t* lz_build_initial_dictionary()
 {
@@ -42,13 +43,13 @@ void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
     {
         unsigned char c = (char) code_pos;
 
-        array_t* item = array_create(1, 1);
+        array_t* item = array_pool_get();
         array_append(item, &c);
 
-        ht_add(ht, item, code_pos);
+        ht_add(ht, &item, code_pos);
     }
 
-    array_t* encoded = array_create(1, 5);
+    array_t* encoded = array_pool_get();
 
     for(unsigned char* pos = file_data; pos < file_data + file_len; pos++)
     {
@@ -71,9 +72,9 @@ void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
         if(pos < file_data + file_len)
         {
             encoded->len++;
-            ht_add(ht, encoded, code_pos++);
+            ht_add(ht, &encoded, code_pos++);
 
-            encoded = array_create(1, 5);
+            encoded = array_pool_get();
             array_append(encoded, pos);
         }
     }
@@ -86,7 +87,6 @@ void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
     }
 
     ht_free(ht);
-    array_free(encoded);
 }
 
 array_t* lz_decode(array_t* enc_data)

@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include "array.h"
 #include "hashtable.h"
+#include "arraypool.h"
 
 hash_table_t* ht_create()
 {
@@ -25,6 +26,11 @@ void ht_free(hash_table_t* ht)
         assert(bucket->vals != NULL);
         assert(bucket->keys != NULL);
 
+        for(int j = 0; j < bucket->keys->len; j++)
+        {
+            array_pool_release(*(array_t**) array_get(bucket->keys, j));
+        }
+
         array_free(bucket->keys);
         array_free(bucket->vals);
 
@@ -48,5 +54,5 @@ unsigned fnv_hash_1a_32 (void *key, int len, unsigned char last)
    return h;
 }
 
-void ht_add(hash_table_t* ht, array_t* key, unsigned int val);
+void ht_add(hash_table_t* ht, array_t** key, unsigned int val);
 int ht_get(hash_table_t* ht, array_t* key);

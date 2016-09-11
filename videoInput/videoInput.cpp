@@ -13,7 +13,6 @@
 //Include Directshow stuff here so we don't worry about needing all the h files.
 #include <dshow.h>
 //#include "streams.h"
-#pragma include_alias( "dxtrans.h", "qedit.h" )
 #define __IDxtCompositor_INTERFACE_DEFINED__
 #define __IDxtAlphaSetter_INTERFACE_DEFINED__
 #define __IDxtJpeg_INTERFACE_DEFINED__
@@ -131,7 +130,7 @@ public:
 
 
 	//------------------------------------------------
-	~SampleGrabberCallback(){
+	virtual ~SampleGrabberCallback(){
 		ptrBuffer = NULL;
 		DeleteCriticalSection(&critSection);
 		CloseHandle(hEvent);
@@ -336,9 +335,7 @@ void videoDevice::NukeDownstream(IBaseFilter *pBF){
 // ----------------------------------------------------------------------
 
 void videoDevice::destroyGraph(){
-	HRESULT hr = NULL;
- 	int FuncRetval=0;
- 	int NumFilters=0;
+	HRESULT hr = 0;
 
 	int i = 0;
 	while (hr == NOERROR)
@@ -403,7 +400,7 @@ videoDevice::~videoDevice(){
 		return;
 	}
 
-	HRESULT HR = NULL;
+	HRESULT HR = 0;
 
 	//Stop the callback and free it
     if( (sgCallback) && (pGrabber) )
@@ -1117,14 +1114,12 @@ void videoInput::showSettingsWindow(int id){
 
 	if(isDeviceSetup(id)){
 
-		HANDLE myTempThread;
-
 		//we reconnect to the device as we have freed our reference to it
 		//why have we freed our reference? because there seemed to be an issue
 		//with some mpeg devices if we didn't
 		HRESULT hr = getDevice(&VDList[id]->pVideoInputFilter, id, VDList[id]->wDeviceName, VDList[id]->nDeviceName);
 		if(hr == S_OK){
-			myTempThread = (HANDLE)_beginthread(basicThread, 0, (void *)&VDList[id]);
+			_beginthread(basicThread, 0, (void *)&VDList[id]);
 		}
 	}
 }
@@ -1135,7 +1130,6 @@ bool videoInput::getVideoSettingFilter(int deviceID, long Property, long &min, l
 	if( !isDeviceSetup(deviceID) )return false;
 
 	HRESULT hr;
-	bool isSuccessful = false;
 
 	videoDevice * VD = VDList[deviceID];
 
@@ -1199,7 +1193,7 @@ bool videoInput::setVideoSettingFilterPct(int deviceID, long Property, float pct
 		double halfStep 	= stepAmnt * 0.5;
 		if( mod < halfStep ) rasterValue -= mod;
 		else rasterValue += stepAmnt - mod;
-		printf("RASTER - pctValue is %f - value is %i - step is %i - mod is %i - rasterValue is %i\n", pctValue, value, stepAmnt, mod, rasterValue);
+		printf("RASTER - pctValue is %f - value is %i - step is %i - mod is %i - rasterValue is %i\n", pctValue, (int) value, (int) stepAmnt, (int) mod, (int) rasterValue);
 	}
 
 	return setVideoSettingFilter(deviceID, Property, rasterValue, Flags, false);
@@ -1211,7 +1205,6 @@ bool videoInput::setVideoSettingFilter(int deviceID, long Property, long lValue,
 	if( !isDeviceSetup(deviceID) )return false;
 
 	HRESULT hr;
-	bool isSuccessful = false;
 
 	videoDevice * VD = VDList[deviceID];
 
@@ -1286,7 +1279,7 @@ bool videoInput::setVideoSettingCameraPct(int deviceID, long Property, float pct
 		double halfStep 	= stepAmnt * 0.5;
 		if( mod < halfStep ) rasterValue -= mod;
 		else rasterValue += stepAmnt - mod;
-		printf("RASTER - pctValue is %f - value is %i - step is %i - mod is %i - rasterValue is %i\n", pctValue, value, stepAmnt, mod, rasterValue);
+		printf("RASTER - pctValue is %f - value is %i - step is %i - mod is %i - rasterValue is %i\n", pctValue, (int) value, (int) stepAmnt, (int) mod, (int) rasterValue);
 	}
 
 	return setVideoSettingCamera(deviceID, Property, rasterValue, Flags, false);
@@ -1334,7 +1327,6 @@ bool videoInput::getVideoSettingCamera(int deviceID, long Property, long &min, l
 	if( !isDeviceSetup(deviceID) )return false;
 
 	HRESULT hr;
-	bool isSuccessful = false;
 
 	videoDevice * VD = VDList[deviceID];
 
@@ -1406,9 +1398,7 @@ bool videoInput::restartDevice(int id){
 		stopDevice(id);
 
 		//set our fps if needed
-		if( avgFrameTime != -1){
-			VDList[id]->requestedFrameTime = avgFrameTime;
-		}
+			VDList[id]->requestedFrameTime = (long) avgFrameTime;
 
 		if( setupDevice(id, tmpW, tmpH, conn) ){
 			//reapply the format - ntsc / pal etc
@@ -1448,8 +1438,10 @@ videoInput::~videoInput(){
 // (do we need to worry about multithreaded apps?)
 // ----------------------------------------------------------------------
 
+static int comInitCount = 0;
+
 bool videoInput::comInit(){
-	HRESULT hr = NULL;
+	HRESULT hr = 0;
 
 	//no need for us to start com more than once
 	if(comInitCount == 0 ){
@@ -1577,10 +1569,6 @@ void videoInput::processPixels(unsigned char * src, unsigned char * dst, int wid
 	int numBytes = widthInBytes * height;
 
 	if(!bRGB){
-
-		int x = 0;
-		int y = 0;
-
 		if(bFlip){
 			for(int y = 0; y < height; y++){
 				memcpy(dst + (y * widthInBytes), src + ( (height -y -1) * widthInBytes), widthInBytes);
@@ -1673,7 +1661,6 @@ static void findClosestSizeAndSubtype(videoDevice * VD, int widthIn, int heightI
 	//find perfect match or closest size
 	int nearW				= 9999999;
 	int nearH				= 9999999;
-	bool foundClosestMatch 	= true;
 
 	int iCount = 0;
 	int iSize = 0;
@@ -1733,7 +1720,6 @@ static void findClosestSizeAndSubtype(videoDevice * VD, int widthIn, int heightI
 
 		        //see if we have an exact match!
 		        if(exactMatchX && exactMatchY){
-		        	foundClosestMatch = false;
 		        	exactMatch = true;
 
 					widthOut		= widthIn;
@@ -1770,8 +1756,6 @@ static bool setSizeAndSubtype(videoDevice * VD, int attemptWidth, int attemptHei
 	VIDEOINFOHEADER *pVih =  reinterpret_cast<VIDEOINFOHEADER*>(VD->pAmMediaType->pbFormat);
 
 	//store current size
-	int tmpWidth  = HEADER(pVih)->biWidth;
-	int tmpHeight = HEADER(pVih)->biHeight;
 	AM_MEDIA_TYPE * tmpType = NULL;
 
 	HRESULT	hr = VD->streamConf->GetFormat(&tmpType);
@@ -1814,7 +1798,7 @@ static bool setSizeAndSubtype(videoDevice * VD, int attemptWidth, int attemptHei
 
 int videoInput::start(int deviceID, videoDevice *VD){
 
-	HRESULT hr 			= NULL;
+	HRESULT hr 			= 0;
 	VD->myID 			= deviceID;
 	VD->setupStarted	= true;
     CAPTURE_MODE   		= PIN_CATEGORY_CAPTURE; //Don't worry - it ends up being preview (which is faster)

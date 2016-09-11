@@ -18,6 +18,7 @@
 #include "net.h"
 #include "array.h"
 #include "lzw.h"
+#include "arraypool.h"
 
 typedef struct
 {
@@ -234,6 +235,7 @@ int main(int, char**)
     SDL_Window *window = init_ui(&glcontext, &rawinput_id, &decoded_id, &rmsView_id);
 
     dct_precompute_matrix();
+    array_pool_init();
 
     frame_data_t* data = (frame_data_t*) calloc(1, sizeof(frame_data_t));
 

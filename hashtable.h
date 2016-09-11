@@ -19,9 +19,9 @@ void ht_free(hash_table_t* ht);
 unsigned int hash_func(array_t* array);
 unsigned fnv_hash_1a_32 (void *key, int len, unsigned char last);
 
-inline void ht_add(hash_table_t* ht, array_t* key, unsigned int val)
+inline void ht_add(hash_table_t* ht, array_t** key, unsigned int val)
 {
-    unsigned int bi = fnv_hash_1a_32(key->base, key->len - 1, key->base[key->len - 1]) & (HT_NUM_BUCKETS - 1);
+    unsigned int bi = fnv_hash_1a_32((*key)->base, (*key)->len - 1, (*key)->base[(*key)->len - 1]) & (HT_NUM_BUCKETS - 1);
     bucket_t* bucket = ht->buckets[bi];
 
     array_append(bucket->keys, key);
@@ -35,7 +35,7 @@ inline int ht_get(hash_table_t* ht, array_t* key)
 
     for(int i = 0; i < bucket->keys->len; i++)
     {
-        array_t* bk = array_get(bucket->keys, i);
+        array_t* bk = * (array_t**) array_get(bucket->keys, i);
 
         if(bk->len == key->len && !memcmp(bk->base, key->base, bk->len))
         {

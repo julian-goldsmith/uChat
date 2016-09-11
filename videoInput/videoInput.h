@@ -37,8 +37,6 @@ Thanks to:
 */
 /////////////////////////////////////////////////////////
 
-#pragma comment(lib,"Strmiids.lib") 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -185,7 +183,6 @@ typedef _AMMediaType AM_MEDIA_TYPE;
 
 //keeps track of how many instances of VI are being used
 //don't touch
-static int comInitCount = 0;
 
 
 ////////////////////////////////////////   VIDEO DEVICE   ///////////////////////////////////
@@ -263,13 +260,13 @@ class videoInput{
 		static void setVerbose(bool _verbose);
 
 		//this allows for multithreaded use of VI ( default is single threaded ).
-		//call this before any videoInput calls. 
-		//note if your app has other COM calls then you should set VIs COM usage to match the other COM mode 
+		//call this before any videoInput calls.
+		//note if your app has other COM calls then you should set VIs COM usage to match the other COM mode
 		static void setComMultiThreaded(bool bMulti);
 
 		//Functions in rough order they should be used.
 		static int listDevices(bool silent = false);
-		static std::vector <std::string> getDeviceList(); 
+		static std::vector <std::string> getDeviceList();
 
 		//needs to be called after listDevices - otherwise returns NULL
 		static const char * getDeviceName(int deviceID);
@@ -321,12 +318,12 @@ class videoInput{
 
 		//Manual control over settings thanks.....
 		//These are experimental for now.
-		bool setVideoSettingFilter(int deviceID, long Property, long lValue, long Flags = NULL, bool useDefaultValue = false);
-		bool setVideoSettingFilterPct(int deviceID, long Property, float pctValue, long Flags = NULL);
+		bool setVideoSettingFilter(int deviceID, long Property, long lValue, long Flags = 0, bool useDefaultValue = false);
+		bool setVideoSettingFilterPct(int deviceID, long Property, float pctValue, long Flags = 0);
 		bool getVideoSettingFilter(int deviceID, long Property, long &min, long &max, long &SteppingDelta, long &currentValue, long &flags, long &defaultValue);
 
-		bool setVideoSettingCamera(int deviceID, long Property, long lValue, long Flags = NULL, bool useDefaultValue = false);
-		bool setVideoSettingCameraPct(int deviceID, long Property, float pctValue, long Flags = NULL);
+		bool setVideoSettingCamera(int deviceID, long Property, long lValue, long Flags = 0, bool useDefaultValue = false);
+		bool setVideoSettingCameraPct(int deviceID, long Property, float pctValue, long Flags = 0);
 		bool getVideoSettingCamera(int deviceID, long Property, long &min, long &max, long &SteppingDelta, long &currentValue, long &flags, long &defaultValue);
 
 		//bool setVideoSettingCam(int deviceID, long Property, long lValue, long Flags = NULL, bool useDefaultValue = false);
