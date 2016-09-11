@@ -10,7 +10,7 @@ hash_table_t* ht_create()
     for(unsigned int i = 0; i < HT_NUM_BUCKETS; i++)
     {
         ht->buckets[i] = malloc(sizeof(bucket_t));
-        ht->buckets[i]->keys = array_create(sizeof(array_t), 5);
+        ht->buckets[i]->keys = array_create(sizeof(array_t*), 5);
         ht->buckets[i]->vals = array_create(sizeof(unsigned int), 5);
     }
 
@@ -26,10 +26,10 @@ void ht_free(hash_table_t* ht)
         assert(bucket->vals != NULL);
         assert(bucket->keys != NULL);
 
-        for(int j = 0; j < bucket->keys->len; j++)
+        /*for(int j = 0; j < bucket->keys->len; j++)
         {
             array_pool_release(*(array_t**) array_get(bucket->keys, j));
-        }
+        }*/
 
         array_free(bucket->keys);
         array_free(bucket->vals);
@@ -40,7 +40,7 @@ void ht_free(hash_table_t* ht)
     free(ht);
 }
 
-unsigned fnv_hash_1a_32 (void *key, int len, unsigned char last)
+unsigned fnv_hash_1a_32 (void *key, int len)
 {
     unsigned char *p = key;
     unsigned h = 0x811c9dc5;
@@ -48,8 +48,6 @@ unsigned fnv_hash_1a_32 (void *key, int len, unsigned char last)
 
     for ( i = 0; i < len; i++ )
       h = ( h ^ p[i] ) * 0x01000193;
-
-    h = ( h ^ last ) * 0x01000193;
 
    return h;
 }

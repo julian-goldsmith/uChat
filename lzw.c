@@ -87,6 +87,7 @@ void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
     }
 
     ht_free(ht);
+    array_pool_release_all();
 }
 
 array_t* lz_decode(array_t* enc_data)
