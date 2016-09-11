@@ -26,11 +26,6 @@ void ht_free(hash_table_t* ht)
         assert(bucket->vals != NULL);
         assert(bucket->keys != NULL);
 
-        /*for(int j = 0; j < bucket->keys->len; j++)
-        {
-            array_pool_release(*(array_t**) array_get(bucket->keys, j));
-        }*/
-
         array_free(bucket->keys);
         array_free(bucket->vals);
 

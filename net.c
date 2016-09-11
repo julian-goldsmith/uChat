@@ -36,6 +36,7 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     header.num_blocks = numBlocks;
     header.bit_len = pos;
 
+    int lzstart = SDL_GetTicks();
     array_t* lz_compressed = array_create(2, pos);
 
     for(int i = 0; i < pos; i += 65536)
@@ -48,10 +49,14 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
         *outlen = lz_compressed->len - oldlen - 1;
     }
 
+    printf("lz %i\n", SDL_GetTicks() - lzstart);
+
     lz_compressed->len *= 2;
     lz_compressed->item_size = 1;
 
+    int huffstart = SDL_GetTicks();
     array_t* huff_compressed = huffman_encode(lz_compressed->base, lz_compressed->len, header.frequencies, &header.bit_len);
+    printf("huff %i\n", SDL_GetTicks() - huffstart);
 
     header.compressed_len = huff_compressed->len;
 
