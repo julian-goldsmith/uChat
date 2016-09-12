@@ -3,6 +3,7 @@
 #include "huffman.h"
 #include "lzw.h"
 #include <SDL2/SDL.h>
+#include <stdio.h>
 
 typedef struct
 {
@@ -30,6 +31,35 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
 
         memcpy(buffer + pos, cblock->rle_data, cblock->rle_size);
         pos += cblock->rle_size;
+
+        int width = 256;
+        int height = 256;
+        char buf[100];
+        sprintf(buf, "D:\\block\\%i.tga", cblock - cblocks);
+        FILE* fptr = fopen(buf, "w");
+        putc(0,fptr);
+        putc(0,fptr);
+        putc(2,fptr);                         /* uncompressed RGB */
+        putc(0,fptr); putc(0,fptr);
+        putc(0,fptr); putc(0,fptr);
+        putc(0,fptr);
+        putc(0,fptr); putc(0,fptr);           /* X origin */
+        putc(0,fptr); putc(0,fptr);           /* y origin */
+        putc((width & 0x00FF),fptr);
+        putc((width & 0xFF00) / 256,fptr);
+        putc((height & 0x00FF),fptr);
+        putc((height & 0xFF00) / 256,fptr);
+        putc(24,fptr);                        /* 24 bit bitmap */
+        putc(0,fptr);
+
+        for(int j = 0; j < 256; j++)
+        {
+            putc(cblock->rle_data[j], fptr);
+            putc(cblock->rle_data[256 + j], fptr);
+            putc(cblock->rle_data[512 + j], fptr);
+        }
+
+        fclose(fptr);
     }
 
     packet_header_t header;

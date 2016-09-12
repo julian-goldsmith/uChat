@@ -129,7 +129,7 @@ short* ic_flatten_block_data(short blockDataQuant[MB_SIZE][MB_SIZE][3])
         {
             for(int y = 0; y < MB_SIZE; y++)
             {
-                *pos++ = blockDataQuant[x][y][rgb];
+                *pos++ = blockDataQuant[y][x][rgb];
             }
         }
     }
@@ -145,7 +145,7 @@ void ic_unflatten_block_data(short blockDataQuant[MB_SIZE][MB_SIZE][3], short* r
         {
             for(int y = 0; y < MB_SIZE; y++)
             {
-                blockDataQuant[x][y][rgb] = *ret++;
+                blockDataQuant[y][x][rgb] = *ret++;
             }
         }
     }
