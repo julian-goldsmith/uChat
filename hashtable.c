@@ -35,6 +35,20 @@ void ht_free(hash_table_t* ht)
     free(ht);
 }
 
+void ht_clear(hash_table_t* ht)
+{
+    for(unsigned int i = 0; i < HT_NUM_BUCKETS; i++)
+    {
+        bucket_t* bucket = ht->buckets[i];
+
+        assert(bucket->vals != NULL);
+        assert(bucket->keys != NULL);
+
+        array_clear(bucket->keys);
+        array_clear(bucket->vals);
+    }
+}
+
 uint64_t fnv_hash (void *key, int len)
 {
     unsigned char *p = key;

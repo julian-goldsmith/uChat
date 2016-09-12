@@ -33,10 +33,16 @@ void lz_entries_clean_up(array_t* entries)
     array_free(entries);
 }
 
+hash_table_t* ht;
+
 void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
 {
     // leaks solved with Dr. Memory
-    hash_table_t* ht = ht_create();
+    if(ht == NULL)
+    {
+        ht = ht_create();
+    }
+
     unsigned int code_pos = 0;
 
     for(code_pos = 0; code_pos < 256; code_pos++)
@@ -86,7 +92,7 @@ void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
         array_append(out_values, &code);
     }
 
-    ht_free(ht);
+    ht_clear(ht);
     array_pool_release_all();
 }
 

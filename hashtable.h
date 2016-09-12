@@ -17,6 +17,7 @@ typedef struct
 } hash_table_t;
 
 hash_table_t* ht_create();
+void ht_clear(hash_table_t* ht);
 void ht_free(hash_table_t* ht);
 unsigned int hash_func(array_t* array);
 uint64_t fnv_hash (void *key, int len);

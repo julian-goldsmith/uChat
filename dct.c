@@ -82,7 +82,7 @@ void _dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 
 void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4], short qdata[MB_SIZE][MB_SIZE][3])
 {
-    const float quality = 8.0f;
+    const float quality = 16.0f;
 
     for(int x = 0; x < MB_SIZE; x++)
     {
@@ -107,9 +107,9 @@ void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4], short qdata[MB_SIZE][MB
                 data[x][y][2] = 0;
             }
 
-            qdata[x][y][0] = (((short) data[x][y][0]) & 0xFFFC);
-            qdata[x][y][1] = (((short) data[x][y][1]) & 0xFFFC);
-            qdata[x][y][2] = (((short) data[x][y][2]) & 0xFFFC);
+            qdata[x][y][0] = (((short) data[x][y][0]) & 0xFFFE);
+            qdata[x][y][1] = (((short) data[x][y][1]) & 0xFFFE);
+            qdata[x][y][2] = (((short) data[x][y][2]) & 0xFFFE);
         }
     }
 }

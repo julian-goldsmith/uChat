@@ -28,7 +28,7 @@ pool_chunk_t* array_pool_create_chunk()
 
     for(unsigned int i = 0; i < 32; i++)
     {
-        chunk->items[i] = array_create(1, 5);
+        chunk->items[i] = array_create(1, 25);
     }
 
     return chunk;
@@ -77,7 +77,7 @@ void array_pool_release_all()
 {
     for(pool_chunk_t* pos = root; pos != NULL; pos = pos->next)
     {
-        if(pos->bitmap == 0) break;
+        if(pos->bitmap == 0) continue;
 
         for(int i = 0; i < 32; i++)
         {
