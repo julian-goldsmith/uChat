@@ -82,13 +82,13 @@ void _dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 
 void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4], short qdata[MB_SIZE][MB_SIZE][3])
 {
-    const float quality = 16.0f;
+    const float quality = 4.0f;
 
     for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            data[x][y][0] *= quantPrecomp[x][y];
+            /*data[x][y][0] *= quantPrecomp[x][y];
             data[x][y][1] *= quantPrecomp[x][y];
             data[x][y][2] *= quantPrecomp[x][y];
 
@@ -109,7 +109,11 @@ void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4], short qdata[MB_SIZE][MB
 
             qdata[x][y][0] = (((short) data[x][y][0]) & 0xFFFE);
             qdata[x][y][1] = (((short) data[x][y][1]) & 0xFFFE);
-            qdata[x][y][2] = (((short) data[x][y][2]) & 0xFFFE);
+            qdata[x][y][2] = (((short) data[x][y][2]) & 0xFFFE);*/
+
+            qdata[x][y][0] = (((short) data[x][y][0]) & 0xFFFF);
+            qdata[x][y][1] = (((short) data[x][y][1]) & 0xFFFF);
+            qdata[x][y][2] = (((short) data[x][y][2]) & 0xFFFF);
         }
     }
 }
@@ -120,9 +124,9 @@ void dct_unquantize_block(short qdata[MB_SIZE][MB_SIZE][3], float data[MB_SIZE][
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            data[x][y][0] = qdata[x][y][0] / quantPrecomp[x][y];
-            data[x][y][1] = qdata[x][y][1] / quantPrecomp[x][y];
-            data[x][y][2] = qdata[x][y][2] / quantPrecomp[x][y];
+            data[x][y][0] = qdata[x][y][0];// / quantPrecomp[x][y];
+            data[x][y][1] = qdata[x][y][1];// / quantPrecomp[x][y];
+            data[x][y][2] = qdata[x][y][2];// / quantPrecomp[x][y];
         }
     }
 }

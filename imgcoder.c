@@ -151,6 +151,9 @@ void ic_unflatten_block_data(short blockDataQuant[MB_SIZE][MB_SIZE][3], short* r
     }
 }
 
+void yuv_encode(unsigned char in[MB_SIZE][MB_SIZE][3], unsigned char out[MB_SIZE][MB_SIZE][3]);
+void yuv_decode(float in[MB_SIZE][MB_SIZE][4], float out[MB_SIZE][MB_SIZE][4]);
+
 void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macroblock_t* cblocks)
 {
     float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
@@ -162,6 +165,8 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
 
         cblock->mb_x = block->mb_x;
         cblock->mb_y = block->mb_y;
+
+        yuv_encode(block->blockData, block->blockData);
 
         short blockDataQuant[MB_SIZE][MB_SIZE][3];
         dct_encode_block(block->blockData, blockDataDCT);
@@ -228,6 +233,8 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
         ic_unflatten_block_data(qdata, block->rle_data);
         dct_unquantize_block(qdata, data);
         dct_decode_block(data, pixels);
+
+        yuv_decode(pixels, pixels);
 
         for(int x = 0; x < MB_SIZE; x++)
         {
