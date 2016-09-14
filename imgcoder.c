@@ -4,6 +4,7 @@
 #include "imgcoder.h"
 #include "dct.h"
 #include "huffman.h"
+#include "yuv.h"
 
 int ic_sort_blocks(const void* val1, const void* val2)
 {
@@ -151,9 +152,6 @@ void ic_unflatten_block_data(short blockDataQuant[MB_SIZE][MB_SIZE][3], short* r
     }
 }
 
-void yuv_encode(unsigned char in[MB_SIZE][MB_SIZE][3], unsigned char out[MB_SIZE][MB_SIZE][3]);
-void yuv_decode(float in[MB_SIZE][MB_SIZE][4], float out[MB_SIZE][MB_SIZE][4]);
-
 void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macroblock_t* cblocks)
 {
     float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
@@ -166,10 +164,11 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
         cblock->mb_x = block->mb_x;
         cblock->mb_y = block->mb_y;
 
-        yuv_encode(block->blockData, block->blockData);
+        unsigned char tempOut[MB_SIZE][MB_SIZE][3];
+        yuv_encode(block->blockData, tempOut);
 
         short blockDataQuant[MB_SIZE][MB_SIZE][3];
-        dct_encode_block(block->blockData, blockDataDCT);
+        dct_encode_block(tempOut, blockDataDCT);
         dct_quantize_block(blockDataDCT, blockDataQuant);
 
         cblock->rle_data = ic_flatten_block_data(blockDataQuant);
@@ -227,6 +226,7 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
         short qdata[MB_SIZE][MB_SIZE][3];
         float data[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
         float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
+        float pixels2[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
 
         assert(block->rle_size > 0);
 
@@ -234,16 +234,16 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
         dct_unquantize_block(qdata, data);
         dct_decode_block(data, pixels);
 
-        yuv_decode(pixels, pixels);
+        yuv_decode(pixels, pixels2);
 
         for(int x = 0; x < MB_SIZE; x++)
         {
             for(int y = 0; y < MB_SIZE; y++)
             {
                 int frameBase = 3 * ((block->mb_y * MB_SIZE + y) * 640 + block->mb_x * MB_SIZE + x);
-                frameOut[frameBase] = pixels[x][y][0];
-                frameOut[frameBase + 1] = pixels[x][y][1];
-                frameOut[frameBase + 2] = pixels[x][y][2];
+                frameOut[frameBase] = pixels2[x][y][0];
+                frameOut[frameBase + 1] = pixels2[x][y][1];
+                frameOut[frameBase + 2] = pixels2[x][y][2];
             }
         }
     }
