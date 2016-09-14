@@ -27,6 +27,10 @@ void yuv_encode(unsigned char in[MB_SIZE][MB_SIZE][3], unsigned char out[MB_SIZE
                 (temp[2] > 255) ? 255 :
                 (temp[2] < 0) ? 0 :
                 temp[2];
+
+            out[x][y][0] &= 0xFC;
+            out[x][y][1] &= 0xF8;
+            out[x][y][2] &= 0xF8;
         }
     }
 }
