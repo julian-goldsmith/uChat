@@ -51,15 +51,16 @@ void ht_clear(hash_table_t* ht)
 
 uint64_t fnv_hash (void *key, int len)
 {
-    unsigned char *p = key;
     uint64_t h = 0xcbf29ce484222325;
-    int i;
 
-    for ( i = 0; i < len; i++ )
-      h = ( h ^ p[i] ) * 0x100000001b3;
+    for(unsigned char *p = key; p < (unsigned char*) key + len; p++)
+    {
+        h = (h ^ *p) * 0x100000001b3;
+    }
 
-   return h;
+    return h;
 }
 
 void ht_add(hash_table_t* ht, array_t* key, unsigned int val);
 int ht_get(hash_table_t* ht, array_t* key);
+int ht_get2(hash_table_t* ht, uint64_t hash);

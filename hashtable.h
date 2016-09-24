@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define HT_NUM_BUCKETS 8192     // must be a power of 2
+#define HT_NUM_BUCKETS 1024     // must be a power of 2
 
 typedef struct
 {
@@ -32,9 +32,8 @@ inline void ht_add(hash_table_t* ht, array_t* key, unsigned int val)
     array_append(bucket->vals, &val);
 }
 
-inline int ht_get(hash_table_t* ht, array_t* key)
+inline int ht_get2(hash_table_t* ht, uint64_t hash)
 {
-    uint64_t hash = fnv_hash(key->base, key->len);
     unsigned int bi = hash & (HT_NUM_BUCKETS - 1);
     bucket_t* bucket = ht->buckets[bi];
 
@@ -49,6 +48,12 @@ inline int ht_get(hash_table_t* ht, array_t* key)
     }
 
     return -1;
+}
+
+inline int ht_get(hash_table_t* ht, array_t* key)
+{
+    uint64_t hash = fnv_hash(key, key->len * key->item_size);
+    return ht_get2(ht, hash);
 }
 
 #endif // HASHTABLE_H_INCLUDED

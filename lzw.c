@@ -55,41 +55,32 @@ void lz_encode(unsigned char* file_data, int file_len, array_t* out_values)
         ht_add(ht, item, code_pos);
     }
 
-    array_t* encoded = array_pool_get();
-
-    for(unsigned char* pos = file_data; pos < file_data + file_len; pos++)
+    for(unsigned char* pos = file_data; pos < file_data + file_len;)
     {
+        array_t* encoded = array_pool_get();
+        short prev_code = -1;
+        unsigned char* prev_pos = pos;
+
+        uint64_t h = 0xcbf29ce484222325;
+
         while(pos < file_data + file_len)
         {
-            array_append(encoded, pos);
+            h = (h ^ *pos) * 0x100000001b3;
 
-            if(ht_get(ht, encoded) == -1)
+            short new_code = ht_get2(ht, h);
+
+            if(new_code == -1)
             {
-                encoded->len--;
+                array_appendm(encoded, prev_pos, pos - prev_pos + 1);
+                ht_add(ht, encoded, code_pos++);
                 break;
             }
 
+            prev_code = new_code;
             pos++;
         }
 
-        short code = ht_get(ht, encoded);
-        array_append(out_values, &code);
-
-        if(pos < file_data + file_len)
-        {
-            encoded->len++;
-            ht_add(ht, encoded, code_pos++);
-
-            encoded = array_pool_get();
-            array_append(encoded, pos);
-        }
-    }
-
-    if(encoded->len == 1)
-    {
-        // if len is 1, last coded didn't get added
-        short code = ht_get(ht, encoded);
-        array_append(out_values, &code);
+        array_append(out_values, &prev_code);
     }
 
     ht_clear(ht);

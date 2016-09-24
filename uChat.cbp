@@ -15,10 +15,13 @@
 					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-fno-inline" />
+					<Add option="-fprofile-arcs -ftest-coverage" />
+					<Add option="-march=native" />
 					<Add option="-DDEBUG" />
 				</Compiler>
 				<Linker>
 					<Add option="-pg -lgmon" />
+					<Add library="gcov" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -109,6 +112,10 @@
 		<Unit filename="rle.h" />
 		<Unit filename="videoInput/videoInput.cpp" />
 		<Unit filename="videoInput/videoInput.h" />
+		<Unit filename="yuv.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="yuv.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />

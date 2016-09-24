@@ -14,6 +14,7 @@ void array_pop(array_t* array);
 void* array_get_new(array_t* array);
 void array_clear(array_t* array);
 void array_append1(array_t* array, void* item);
+void array_appendm(array_t* array, void* item, unsigned int count);
 
 bitstream_t* bitstream_create();
 void bitstream_append(bitstream_t* bs, bool value);

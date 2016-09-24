@@ -81,6 +81,25 @@ inline unsigned int array_append(array_t* array, void* item)
     return array->len - 1;
 }
 
+inline void array_appendm(array_t* array, void* item, unsigned int count)
+{
+    if(array->capacity <= array->len + count)
+    {
+        array->capacity *= 2;
+
+        if(array->capacity <= array->len + count)
+        {
+            array->capacity += count;
+        }
+
+        array->base = (unsigned char*) realloc(array->base, array->capacity * array->item_size);
+    }
+
+    memcpy(array->base + array->len * array->item_size, item, count * array->item_size);
+
+    array->len += count;
+}
+
 inline void* array_get_new(array_t* array)
 {
     unsigned int idx = array_append(array, NULL);
