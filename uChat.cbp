@@ -15,7 +15,6 @@
 					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-fno-inline" />
-					<Add option="-fprofile-arcs -ftest-coverage" />
 					<Add option="-march=native" />
 					<Add option="-DDEBUG" />
 				</Compiler>

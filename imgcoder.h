@@ -4,7 +4,6 @@
 #define MB_SIZE 16
 #define MB_NUM_X (640/MB_SIZE)
 #define MB_NUM_Y (480/MB_SIZE)
-//#define NUMBLOCKS ((MB_NUM_X*MB_NUM_Y) / 16)  /*120*/
 
 typedef struct
 {
@@ -18,8 +17,9 @@ typedef struct
 {
     unsigned char mb_x;
     unsigned char mb_y;
-    short rle_size;
-    short* rle_data;
+    unsigned short yout[MB_SIZE][MB_SIZE];
+    unsigned char uout[MB_SIZE/4][MB_SIZE/4];
+    unsigned char vout[MB_SIZE/4][MB_SIZE/4];
 } compressed_macroblock_t;
 
 #ifdef __cplusplus

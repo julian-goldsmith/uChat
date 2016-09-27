@@ -119,39 +119,6 @@ void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView, short numBl
     }
 }
 
-short* ic_flatten_block_data(short blockDataQuant[MB_SIZE][MB_SIZE][3])
-{
-    short* ret = (short*) malloc(sizeof(short) * MB_SIZE * MB_SIZE * 3);
-    short* pos = ret;
-
-    for(int rgb = 0; rgb < 3; rgb++)
-    {
-        for(int x = 0; x < MB_SIZE; x++)
-        {
-            for(int y = 0; y < MB_SIZE; y++)
-            {
-                *pos++ = blockDataQuant[y][x][rgb];
-            }
-        }
-    }
-
-    return ret;
-}
-
-void ic_unflatten_block_data(short blockDataQuant[MB_SIZE][MB_SIZE][3], short* ret)
-{
-    for(int rgb = 0; rgb < 3; rgb++)
-    {
-        for(int x = 0; x < MB_SIZE; x++)
-        {
-            for(int y = 0; y < MB_SIZE; y++)
-            {
-                blockDataQuant[y][x][rgb] = *ret++;
-            }
-        }
-    }
-}
-
 void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macroblock_t* cblocks)
 {
     float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
@@ -164,25 +131,25 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
         cblock->mb_x = block->mb_x;
         cblock->mb_y = block->mb_y;
 
-        unsigned char tempOut[MB_SIZE][MB_SIZE][3];
-        yuv_encode(block->blockData, tempOut);
+        unsigned char yout[MB_SIZE][MB_SIZE];
+        yuv_encode(block->blockData, yout, cblock->uout, cblock->vout);
 
         short blockDataQuant[MB_SIZE][MB_SIZE][3];
-        dct_encode_block(tempOut, blockDataDCT);
+        dct_encode_block(yout, blockDataDCT);
         dct_quantize_block(blockDataDCT, blockDataQuant);
 
-        cblock->rle_data = ic_flatten_block_data(blockDataQuant);
-        cblock->rle_size = sizeof(short) * MB_SIZE * MB_SIZE * 3;
+        for(int x = 0; x < MB_SIZE; x++)
+        {
+            for(int y = 0; y < MB_SIZE; y++)
+            {
+                cblock->yout[x][y] = blockDataQuant[x][y][0];
+            }
+        }
     }
 }
 
 void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks, short numBlocks)
 {
-    for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
-    {
-        free(cblock->rle_data);
-    }
-
     free(cblocks);
 }
 
@@ -199,7 +166,8 @@ short ic_get_num_blocks(const macroblock_t* blocks)
     return (MB_NUM_X * MB_NUM_Y) / 8;      // FIXME: make const
 }
 
-compressed_macroblock_t* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame, unsigned char* rmsView, short* num_blocks)
+compressed_macroblock_t* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame,
+                                         unsigned char* rmsView, short* num_blocks)
 {
     macroblock_t* blocks = (macroblock_t*) malloc(MB_NUM_X * MB_NUM_Y * sizeof(macroblock_t));
 
@@ -228,13 +196,18 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
         float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
         float pixels2[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
 
-        assert(block->rle_size > 0);
+        for(int x = 0; x < MB_SIZE; x++)
+        {
+            for(int y = 0; y < MB_SIZE; y++)
+            {
+                qdata[x][y][0] = block->yout[x][y];
+            }
+        }
 
-        ic_unflatten_block_data(qdata, block->rle_data);
         dct_unquantize_block(qdata, data);
         dct_decode_block(data, pixels);
 
-        yuv_decode(pixels, pixels2);
+        yuv_decode(pixels, block->uout, block->vout, pixels2);
 
         for(int x = 0; x < MB_SIZE; x++)
         {

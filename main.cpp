@@ -267,7 +267,7 @@ int main(int, char**)
 
         if(pthread_mutex_trylock(&sync_mutex) == 0)
         {
-            update_views(rawinput_id, decoded_id, rmsView_id, prev_frame, data);
+            //update_views(rawinput_id, decoded_id, rmsView_id, prev_frame, data);
             pthread_mutex_unlock(&sync_mutex);
         }
 

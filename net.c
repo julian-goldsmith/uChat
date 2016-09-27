@@ -21,16 +21,19 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
     {
         // FIXME: don't alloc so often
-        buffer = (unsigned char*) realloc(buffer, pos + 4 + cblock->rle_size * 2);
+        buffer = (unsigned char*) realloc(buffer, pos + 2 + sizeof(cblock->yout) + sizeof(cblock->uout) + sizeof(cblock->vout));
 
         *(buffer + pos++) = cblock->mb_x;
         *(buffer + pos++) = cblock->mb_y;
 
-        *(short*) (buffer + pos) = cblock->rle_size;
-        pos += 2;
+        memcpy(buffer + pos, cblock->yout, sizeof(cblock->yout));
+        pos += sizeof(cblock->yout);
 
-        memcpy(buffer + pos, cblock->rle_data, cblock->rle_size);
-        pos += cblock->rle_size;
+        memcpy(buffer + pos, cblock->uout, sizeof(cblock->uout));
+        pos += sizeof(cblock->uout);
+
+        memcpy(buffer + pos, cblock->vout, sizeof(cblock->vout));
+        pos += sizeof(cblock->vout);
     }
 
     packet_header_t header;
@@ -113,12 +116,14 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
         cblock->mb_x = *bp++;
         cblock->mb_y = *bp++;
 
-        cblock->rle_size = *(short*) bp;
-        bp += 2;
+        memcpy(cblock->yout, bp, sizeof(cblock->yout));
+        bp += sizeof(cblock->yout);
 
-        cblock->rle_data = (short*) malloc(cblock->rle_size);
-        memcpy(cblock->rle_data, bp, cblock->rle_size);
-        bp += cblock->rle_size;
+        memcpy(cblock->uout, bp, sizeof(cblock->uout));
+        bp += sizeof(cblock->uout);
+
+        memcpy(cblock->vout, bp, sizeof(cblock->vout));
+        bp += sizeof(cblock->vout);
     }
 
     free(unhuff);

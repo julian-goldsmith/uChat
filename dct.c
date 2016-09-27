@@ -127,7 +127,7 @@ void dct_unquantize_block(short qdata[MB_SIZE][MB_SIZE][3], float data[MB_SIZE][
     }
 }
 
-void dct_encode_block(unsigned char blockData[MB_SIZE][MB_SIZE][3], float blockDataDCT[MB_SIZE][MB_SIZE][4])
+void dct_encode_block(unsigned char blockData[MB_SIZE][MB_SIZE], float blockDataDCT[MB_SIZE][MB_SIZE][4])
 {
     float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
 
@@ -135,9 +135,9 @@ void dct_encode_block(unsigned char blockData[MB_SIZE][MB_SIZE][3], float blockD
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            pixels[x][y][0] = blockData[x][y][0];
-            pixels[x][y][1] = blockData[x][y][1];
-            pixels[x][y][2] = blockData[x][y][2];
+            pixels[x][y][0] = blockData[x][y];
+            pixels[x][y][1] = 0.0;//blockData[x][y][1];
+            pixels[x][y][2] = 0.0;//blockData[x][y][2];
             pixels[x][y][3] = 0.0;
         }
     }
