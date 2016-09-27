@@ -6,7 +6,6 @@
 void yuv_encode(unsigned char in[MB_SIZE][MB_SIZE][3], unsigned char yout[MB_SIZE][MB_SIZE],
                 unsigned char uout[MB_SIZE/4][MB_SIZE/4], unsigned char vout[MB_SIZE/4][MB_SIZE/4])
 {
-    return;
     unsigned char tempuout[MB_SIZE][MB_SIZE];
     unsigned char tempvout[MB_SIZE][MB_SIZE];
 
@@ -55,17 +54,15 @@ void yuv_encode(unsigned char in[MB_SIZE][MB_SIZE][3], unsigned char yout[MB_SIZ
             blockU /= 16;
             blockV /= 16;
 
-            //uout[x][y] = 0;
-            /*
+            uout[x][y] =
                 (blockU > 255) ? 255 :
                 (blockU < 0) ? 0 :
-                blockU;*/
+                blockU;
 
-            //vout[x][y] = 0;
-            /*
+            vout[x][y] =
                 (blockV > 255) ? 255 :
                 (blockV < 0) ? 0 :
-                blockV;*/
+                blockV;
         }
     }
 }
@@ -73,14 +70,13 @@ void yuv_encode(unsigned char in[MB_SIZE][MB_SIZE][3], unsigned char yout[MB_SIZ
 void yuv_decode(const float yin[MB_SIZE][MB_SIZE][4], const unsigned char uin[MB_SIZE/4][MB_SIZE/4],
                 const unsigned char vin[MB_SIZE/4][MB_SIZE/4], float out[MB_SIZE][MB_SIZE][4])
 {
-    return;
     for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
             float yp = yin[x][y][0];
-            float u = 128;//uin[x/4][y/4];
-            float v = 128;//vin[x/4][y/4];
+            float u = uin[x/4][y/4];
+            float v = vin[x/4][y/4];
 
             out[x][y][0] = yp                           + ( 1.402    * (v - 128));
             out[x][y][1] = yp + (-0.344136 * (u - 128)) + (-0.714136 * (v - 128));
