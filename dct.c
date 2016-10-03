@@ -6,18 +6,21 @@
 
 float dct16Precomp[MB_SIZE][MB_SIZE];
 float dct4Precomp[4][4];
-float quantPrecomp[MB_SIZE][MB_SIZE];
+float quant16Precomp[MB_SIZE][MB_SIZE];
+float quant4Precomp[4][4];
 
 void dct_precompute_matrix()
 {
     float log16_2 = logf(16.0f) * logf(16.0f);
+    float log4_2 = logf(4.0f) * logf(4.0f);
+
     for (int u = 0; u < MB_SIZE; u++)
     {
         for (int x = 0; x < MB_SIZE; x++)
         {
             dct16Precomp[u][x] = cos((float)(2*x+1) * (float)u * M_PI / (2.0 * (float) MB_SIZE));
 
-            quantPrecomp[u][x] = powf(16, -logf(u + 1) * logf(x + 1) / log16_2);
+            quant16Precomp[u][x] = powf(16, -logf(u + 1) * logf(x + 1) / log16_2);
         }
     }
 
@@ -26,6 +29,8 @@ void dct_precompute_matrix()
         for(int x = 0; x < 4; x++)
         {
             dct4Precomp[u][x] = cos((float)(2*x+1) * (float)u * M_PI / (2.0 * 4.0));
+
+            quant4Precomp[u][x] = powf(4, -logf(u + 1) * logf(x + 1) / log4_2);
         }
     }
 }
@@ -148,13 +153,58 @@ void dct4(unsigned char pixels[4][4], short data[4][4])
 	}
 }
 
+void dct16_quantize_block(short out[MB_SIZE][MB_SIZE])
+{
+    const float quality = 8.0f;
+
+    for(int x = 0; x < MB_SIZE; x++)
+    {
+        for(int y = 0; y < MB_SIZE; y++)
+        {
+            float val = out[x][y] * quant16Precomp[x][y];
+
+            if(fabs(val) < quality)
+            {
+                val = 0;
+            }
+
+            out[x][y] = (short) val;
+        }
+    }
+}
+
+void dct4_quantize_block(short out[4][4])
+{
+    const float quality = 8.0f;
+
+    for(int x = 0; x < 4; x++)
+    {
+        for(int y = 0; y < 4; y++)
+        {
+            float val = out[x][y] * quant4Precomp[x][y];
+
+            if(fabs(val) < quality)
+            {
+                val = 0;
+            }
+
+            out[x][y] = (short) val;
+        }
+    }
+}
+
 void dct_encode_block(unsigned char yin[MB_SIZE][MB_SIZE], unsigned char uin[MB_SIZE/4][MB_SIZE/4],
                       unsigned char vin[MB_SIZE/4][MB_SIZE/4], short yout[MB_SIZE][MB_SIZE],
                       short uout[MB_SIZE/4][MB_SIZE/4], short vout[MB_SIZE/4][MB_SIZE/4])
 {
     dct16(yin, yout);
+    dct16_quantize_block(yout);
+
     dct4(uin, uout);
+    dct4_quantize_block(uout);
+
     dct4(vin, vout);
+    dct4_quantize_block(vout);
 }
 
 void idct16_1d(float in[MB_SIZE], float out[MB_SIZE], bool clamp)
@@ -293,11 +343,41 @@ void idct4(const short data[4][4], unsigned char pixels[4][4])
 	}
 }
 
+void dct16_unquantize_block(const short yin[MB_SIZE][MB_SIZE], short yout[MB_SIZE][MB_SIZE])
+{
+    for(int x = 0; x < MB_SIZE; x++)
+    {
+        for(int y = 0; y < MB_SIZE; y++)
+        {
+            yout[x][y] = yin[x][y] / quant16Precomp[x][y];
+        }
+    }
+}
+
+void dct4_unquantize_block(const short in[4][4], short out[4][4])
+{
+    for(int x = 0; x < 4; x++)
+    {
+        for(int y = 0; y < 4; y++)
+        {
+            out[x][y] = in[x][y] / quant4Precomp[x][y];
+        }
+    }
+}
+
 void dct_decode_block(const short yin[MB_SIZE][MB_SIZE], const short uin[4][4],
                       const short vin[4][4], unsigned char yout[MB_SIZE][MB_SIZE],
                       unsigned char uout[4][4], unsigned char vout[4][4])
 {
-    idct16(yin, yout);
-    idct4(uin, uout);
-    idct4(vin, vout);
+    short ytemp[MB_SIZE][MB_SIZE];
+    dct16_unquantize_block(yin, ytemp);
+    idct16((const short(*)[MB_SIZE]) ytemp, yout);
+
+    short utemp[4][4];
+    dct4_unquantize_block(uin, utemp);
+    idct4((const short(*)[4]) utemp, uout);
+
+    short vtemp[4][4];
+    dct4_unquantize_block(vin, vtemp);
+    idct4((const short(*)[4]) vtemp, vout);
 }
