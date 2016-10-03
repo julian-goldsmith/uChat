@@ -17,9 +17,9 @@ typedef struct
 {
     unsigned char mb_x;
     unsigned char mb_y;
-    unsigned short yout[MB_SIZE][MB_SIZE];
-    unsigned char uout[MB_SIZE/4][MB_SIZE/4];
-    unsigned char vout[MB_SIZE/4][MB_SIZE/4];
+    short yout[MB_SIZE][MB_SIZE];
+    short uout[4][4];
+    short vout[4][4];
 } compressed_macroblock_t;
 
 #ifdef __cplusplus

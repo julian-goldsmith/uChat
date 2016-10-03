@@ -4,7 +4,8 @@
 #include "imgcoder.h"
 #include "dct.h"
 
-float dctPrecomp[MB_SIZE][MB_SIZE];
+float dct16Precomp[MB_SIZE][MB_SIZE];
+float dct4Precomp[4][4];
 float quantPrecomp[MB_SIZE][MB_SIZE];
 
 void dct_precompute_matrix()
@@ -14,48 +15,76 @@ void dct_precompute_matrix()
     {
         for (int x = 0; x < MB_SIZE; x++)
         {
-            dctPrecomp[u][x] = cos((float)(2*x+1) * (float)u * M_PI / (2.0 * (float) MB_SIZE));
+            dct16Precomp[u][x] = cos((float)(2*x+1) * (float)u * M_PI / (2.0 * (float) MB_SIZE));
 
             quantPrecomp[u][x] = powf(16, -logf(u + 1) * logf(x + 1) / log16_2);
         }
     }
+
+    for(int u = 0; u < 4; u++)
+    {
+        for(int x = 0; x < 4; x++)
+        {
+            dct4Precomp[u][x] = cos((float)(2*x+1) * (float)u * M_PI / (2.0 * 4.0));
+        }
+    }
 }
 
-void _dct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE])
+void dct16_1d(float in[MB_SIZE], float out[MB_SIZE])
 {
 	for (int u = 0; u < MB_SIZE; u++)
 	{
-		__m128 z = _mm_set1_ps(0.0f);
+		float z = 0.0f;
 
 		for (int x = 0; x < MB_SIZE; x++)
 		{
-            z = _mm_add_ps(z, _mm_mul_ps(in[x], _mm_set1_ps(dctPrecomp[u][x])));
+            z += in[x] * dct16Precomp[u][x];
 		}
 
 		if (u == 0)
         {
-            z = _mm_mul_ps(z, _mm_set1_ps(1.0f / sqrtf(2.0)));
+            z *= 1.0f / sqrtf(2.0);
         }
 
-        out[u] = _mm_mul_ps(z, _mm_set1_ps(0.25f));
+        out[u] = z / 4.0f;
 	}
 }
 
-void _dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
+void dct4_1d(float in[MB_SIZE], float out[MB_SIZE])
 {
-	__m128 in[MB_SIZE] __attribute__((aligned(16)));
-	__m128 out[MB_SIZE] __attribute__((aligned(16)));
-	__m128 rows[MB_SIZE][MB_SIZE] __attribute__((aligned(16)));
+	for (int u = 0; u < 4; u++)
+	{
+		float z = 0.0f;
+
+		for (int x = 0; x < 4; x++)
+		{
+            z += in[x] * dct4Precomp[u][x];
+		}
+
+		if (u == 0)
+        {
+            z *= 1.0f / sqrtf(2.0);
+        }
+
+        out[u] = z / 2.0f;      // FIXME: should this be 2.0f for this size?
+	}
+}
+
+void dct16(unsigned char pixels[MB_SIZE][MB_SIZE], short data[MB_SIZE][MB_SIZE])
+{
+	float in[MB_SIZE];
+	float out[MB_SIZE];
+	float rows[MB_SIZE][MB_SIZE];
 
 	// transform rows
-	for (int j = 0; j<MB_SIZE; j++)
+	for (int j = 0; j < MB_SIZE; j++)
 	{
 		for (int i = 0; i < MB_SIZE; i++)
         {
-			in[i] = _mm_load_ps(pixels[i][j]);
+			in[i] = pixels[i][j];
         }
 
-		_dct3_1d(in, out);
+		dct16_1d(in, out);
 
 		for (int i = 0; i < MB_SIZE; i++)
 		{
@@ -71,122 +100,136 @@ void _dct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 			in[i] = rows[i][j];
         }
 
-		_dct3_1d(in, out);
+		dct16_1d(in, out);
 
 		for (int i = 0; i < MB_SIZE; i++)
         {
-            _mm_store_ps(data[i][j], out[i]);
+            data[i][j] = out[i];
         }
 	}
 }
 
-void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4], short qdata[MB_SIZE][MB_SIZE][3])
+void dct4(unsigned char pixels[4][4], short data[4][4])
 {
-    const float quality = 8.0f;
+	float in[4];
+	float out[4];
+	float rows[4][4];
 
-    for(int x = 0; x < MB_SIZE; x++)
-    {
-        for(int y = 0; y < MB_SIZE; y++)
+	// transform rows
+	for (int j = 0; j < 4; j++)
+	{
+		for (int i = 0; i < 4; i++)
         {
-            data[x][y][0] *= quantPrecomp[x][y];
-            data[x][y][1] *= quantPrecomp[x][y];
-            data[x][y][2] *= quantPrecomp[x][y];
-
-            if(fabs(data[x][y][0]) < quality)
-            {
-                data[x][y][0] = 0;
-            }
-
-            if(fabs(data[x][y][1]) < quality * 2.0)
-            {
-                data[x][y][1] = 0;
-            }
-
-            if(fabs(data[x][y][2]) < quality * 2.0)
-            {
-                data[x][y][2] = 0;
-            }
-
-            qdata[x][y][0] = (((short) data[x][y][0]) & 0xFFFE);
-            qdata[x][y][1] = (((short) data[x][y][1]) & 0xFFF0);
-            qdata[x][y][2] = (((short) data[x][y][2]) & 0xFFF0);
+			in[i] = pixels[i][j];
         }
-    }
+
+		dct4_1d(in, out);
+
+		for (int i = 0; i < 4; i++)
+		{
+            rows[j][i] = out[i];
+		}
+	}
+
+	// transform columns
+	for (int j = 0; j < 4; j++)
+	{
+		for (int i = 0; i < 4; i++)
+        {
+			in[i] = rows[i][j];
+        }
+
+		dct4_1d(in, out);
+
+		for (int i = 0; i < 4; i++)
+        {
+            data[i][j] = out[i];
+        }
+	}
 }
 
-void dct_unquantize_block(short qdata[MB_SIZE][MB_SIZE][3], float data[MB_SIZE][MB_SIZE][4])
+void dct_encode_block(unsigned char yin[MB_SIZE][MB_SIZE], unsigned char uin[MB_SIZE/4][MB_SIZE/4],
+                      unsigned char vin[MB_SIZE/4][MB_SIZE/4], short yout[MB_SIZE][MB_SIZE],
+                      short uout[MB_SIZE/4][MB_SIZE/4], short vout[MB_SIZE/4][MB_SIZE/4])
 {
-    for(int x = 0; x < MB_SIZE; x++)
-    {
-        for(int y = 0; y < MB_SIZE; y++)
-        {
-            data[x][y][0] = qdata[x][y][0] / quantPrecomp[x][y];
-            data[x][y][1] = qdata[x][y][1] / quantPrecomp[x][y];
-            data[x][y][2] = qdata[x][y][2] / quantPrecomp[x][y];
-        }
-    }
+    dct16(yin, yout);
+    dct4(uin, uout);
+    dct4(vin, vout);
 }
 
-void dct_encode_block(unsigned char blockData[MB_SIZE][MB_SIZE], float blockDataDCT[MB_SIZE][MB_SIZE][4])
-{
-    float pixels[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));
-
-    for(int x = 0; x < MB_SIZE; x++)
-    {
-        for(int y = 0; y < MB_SIZE; y++)
-        {
-            pixels[x][y][0] = blockData[x][y];
-            pixels[x][y][1] = 0.0;//blockData[x][y][1];
-            pixels[x][y][2] = 0.0;//blockData[x][y][2];
-            pixels[x][y][3] = 0.0;
-        }
-    }
-
-    _dct(pixels, blockDataDCT);
-}
-
-void _idct3_1d(__m128 in[MB_SIZE], __m128 out[MB_SIZE], bool clamp)
+void idct16_1d(float in[MB_SIZE], float out[MB_SIZE], bool clamp)
 {
 	for (int u = 0; u < MB_SIZE; u++)
 	{
-		__m128 z = _mm_set1_ps(0.0f);
+		float z = 0.0f;
 
 		for (int x = 0; x < MB_SIZE; x++)
 		{
-		    __m128 co = _mm_set1_ps(1.0f);
+		    float co = 1.0f;
 
             if (x == 0)
             {
-                co = _mm_set1_ps(1.0f / sqrtf(2.0));
+                co = 1.0f / sqrtf(2.0);
             }
 
-            z = _mm_add_ps(z, _mm_mul_ps(co, _mm_mul_ps(_mm_set1_ps(0.5f), _mm_mul_ps(in[x], _mm_set1_ps(dctPrecomp[x][u])))));
+            z += co * 0.5 * in[x] * dct16Precomp[x][u];
 		}
 
         if(clamp)
         {
-            z = _mm_min_ps(_mm_max_ps(z, _mm_set1_ps(0.0f)), _mm_set1_ps(255.0f));  // clamp to max 255, min 0
+            z = (z > 255.0f) ? 255.0f :
+                (z < 0.0f) ? 0.0f :
+                z;
         }
 
         out[u] = z;
 	}
 }
 
-void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
+void idct4_1d(float in[4], float out[4], bool clamp)
 {
-	__m128 in[MB_SIZE] __attribute__((aligned(16)));
-	__m128 out[MB_SIZE] __attribute__((aligned(16)));
-	__m128 rows[MB_SIZE][MB_SIZE] __attribute__((aligned(16)));
+	for (int u = 0; u < 4; u++)
+	{
+		float z = 0.0f;
+
+		for (int x = 0; x < 4; x++)
+		{
+		    float co = 1.0f;
+
+            if (x == 0)
+            {
+                co = 1.0f / sqrtf(2.0);
+            }
+
+            z += co * 0.25 * in[x] * dct4Precomp[x][u];
+		}
+
+        if(clamp)
+        {
+            z = (z > 255.0f) ? 255.0f :
+                (z < 0.0f) ? 0.0f :
+                z;
+        }
+
+        out[u] = z;
+	}
+}
+
+void idct16(short data[MB_SIZE][MB_SIZE], unsigned char pixels[MB_SIZE][MB_SIZE])
+{
+	float in[MB_SIZE];
+	float out[MB_SIZE];
+	float rows[MB_SIZE][MB_SIZE];
 
 	// transform rows
-	for (int j = 0; j<MB_SIZE; j++)
+	for (int j = 0; j < MB_SIZE; j++)
 	{
 		for (int i = 0; i < MB_SIZE; i++)
         {
-			in[i] = _mm_load_ps(data[i][j]);
+			in[i] = data[i][j];
         }
 
-		_idct3_1d(in, out, false);
+		idct16_1d(in, out, false);
 
 		for (int i = 0; i < MB_SIZE; i++)
 		{
@@ -202,16 +245,59 @@ void idct(float pixels[MB_SIZE][MB_SIZE][4], float data[MB_SIZE][MB_SIZE][4])
 			in[i] = rows[i][j];
         }
 
-		_idct3_1d(in, out, true);
+		idct16_1d(in, out, true);
 
 		for (int i = 0; i < MB_SIZE; i++)
         {
-            _mm_store_ps(pixels[i][j], out[i]);
+            pixels[i][j] = out[i];
         }
 	}
 }
 
-void dct_decode_block(float data[MB_SIZE][MB_SIZE][4], float pixels[MB_SIZE][MB_SIZE][4])
+void idct4(short data[4][4], unsigned char pixels[4][4])
 {
-    idct(pixels, data);
+	float in[4];
+	float out[4];
+	float rows[4][4];
+
+	// transform rows
+	for (int j = 0; j < 4; j++)
+	{
+		for (int i = 0; i < 4; i++)
+        {
+			in[i] = data[i][j];
+        }
+
+		idct4_1d(in, out, false);
+
+		for (int i = 0; i < 4; i++)
+		{
+            rows[j][i] = out[i];
+		}
+	}
+
+	// transform columns
+	for (int j = 0; j < 4; j++)
+	{
+		for (int i = 0; i < 4; i++)
+        {
+			in[i] = rows[i][j];
+        }
+
+		idct4_1d(in, out, true);
+
+		for (int i = 0; i < 4; i++)
+        {
+            pixels[i][j] = out[i];
+        }
+	}
+}
+
+void dct_decode_block(short yin[MB_SIZE][MB_SIZE], short uin[4][4],
+                      short vin[4][4], unsigned char yout[MB_SIZE][MB_SIZE],
+                      unsigned char uout[4][4], unsigned char vout[4][4])
+{
+    idct16(yin, yout);
+    idct4(uin, uout);
+    idct4(vin, vout);
 }

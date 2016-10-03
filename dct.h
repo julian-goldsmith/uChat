@@ -6,10 +6,12 @@ extern "C" {
 #endif
 
 void dct_precompute_matrix();
-void dct_quantize_block(float data[MB_SIZE][MB_SIZE][4], short qdata[MB_SIZE][MB_SIZE][3]);
-void dct_unquantize_block(short qdata[MB_SIZE][MB_SIZE][3], float data[MB_SIZE][MB_SIZE][4]);
-void dct_encode_block(unsigned char blockData[MB_SIZE][MB_SIZE], float blockDataDCT[MB_SIZE][MB_SIZE][4]);
-void dct_decode_block(float data[MB_SIZE][MB_SIZE][4], float pixels[MB_SIZE][MB_SIZE][4]);
+void dct_encode_block(unsigned char yin[MB_SIZE][MB_SIZE], unsigned char uin[4][4],
+                      unsigned char vin[4][4], short yout[MB_SIZE][MB_SIZE],
+                      short uout[4][4], short vout[4][4]);
+void dct_decode_block(short yin[MB_SIZE][MB_SIZE], short uin[4][4],
+                      short vin[4][4], unsigned char yout[MB_SIZE][MB_SIZE],
+                      unsigned char uout[4][4], unsigned char vout[4][4]);
 
 #ifdef __cplusplus
 }

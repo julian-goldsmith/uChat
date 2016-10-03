@@ -67,35 +67,36 @@ void yuv_encode(unsigned char in[MB_SIZE][MB_SIZE][3], unsigned char yout[MB_SIZ
     }
 }
 
-void yuv_decode(const float yin[MB_SIZE][MB_SIZE][4], const unsigned char uin[MB_SIZE/4][MB_SIZE/4],
-                const unsigned char vin[MB_SIZE/4][MB_SIZE/4], float out[MB_SIZE][MB_SIZE][4])
+void yuv_decode(const unsigned char yin[MB_SIZE][MB_SIZE], const unsigned char uin[4][4],
+                const unsigned char vin[4][4], unsigned char out[MB_SIZE][MB_SIZE][3])
 {
     for(int x = 0; x < MB_SIZE; x++)
     {
         for(int y = 0; y < MB_SIZE; y++)
         {
-            float yp = yin[x][y][0];
+            float temp[3];
+            float yp = yin[x][y];
             float u = uin[x/4][y/4];
             float v = vin[x/4][y/4];
 
-            out[x][y][0] = yp                           + ( 1.402    * (v - 128));
-            out[x][y][1] = yp + (-0.344136 * (u - 128)) + (-0.714136 * (v - 128));
-            out[x][y][2] = yp + ( 1.772    * (u - 128));
+            temp[0] = yp                           + ( 1.402    * (v - 128));
+            temp[1] = yp + (-0.344136 * (u - 128)) + (-0.714136 * (v - 128));
+            temp[2] = yp + ( 1.772    * (u - 128));
 
             out[x][y][0] =
-                (out[x][y][0] > 255) ? 255 :
-                (out[x][y][0] < 0) ? 0 :
-                out[x][y][0];
+                (temp[0] > 255) ? 255 :
+                (temp[0] < 0) ? 0 :
+                temp[0];
 
             out[x][y][1] =
-                (out[x][y][1] > 255) ? 255 :
-                (out[x][y][1] < 0) ? 0 :
-                out[x][y][1];
+                (temp[1] > 255) ? 255 :
+                (temp[1] < 0) ? 0 :
+                temp[1];
 
             out[x][y][2] =
-                (out[x][y][2] > 255) ? 255 :
-                (out[x][y][2] < 0) ? 0 :
-                out[x][y][2];
+                (temp[2] > 255) ? 255 :
+                (temp[2] < 0) ? 0 :
+                temp[2];
         }
     }
 }
