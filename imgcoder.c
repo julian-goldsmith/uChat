@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <memory.h>
 #include <math.h>
 #include <stdlib.h>
@@ -121,8 +122,6 @@ void ic_show_rms(const macroblock_t* blocks, unsigned char* rmsView, short numBl
 
 void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macroblock_t* cblocks)
 {
-    float blockDataDCT[MB_SIZE][MB_SIZE][4] __attribute__((aligned(16)));  // Red Green Blue Unused
-
     for(int i = 0; i < numBlocks; i++)
     {
         macroblock_t* block = blocks + i;
@@ -134,6 +133,7 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
         unsigned char yout[MB_SIZE][MB_SIZE];
         unsigned char uout[4][4];
         unsigned char vout[4][4];
+
         yuv_encode(block->blockData, yout, uout, vout);
 
         dct_encode_block(yout, uout, vout, cblock->yout, cblock->uout, cblock->vout);
@@ -189,9 +189,11 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
         unsigned char uout[4][4];
         unsigned char vout[4][4];
 
-        dct_decode_block(block->yout, block->uout, block->vout, yout, uout, vout);
+        dct_decode_block(block->yout, block->uout, block->vout,
+                         yout, uout, vout);
 
-        yuv_decode(yout, uout, vout, pixels);
+        yuv_decode((const unsigned char(*)[16]) yout, (const unsigned char(*)[4]) uout,
+                   (const unsigned char(*)[4]) vout, pixels);
 
         for(int x = 0; x < MB_SIZE; x++)
         {

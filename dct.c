@@ -211,11 +211,11 @@ void idct4_1d(float in[4], float out[4], bool clamp)
                 z;
         }
 
-        out[u] = z;
+        out[u] = z * 4.0;
 	}
 }
 
-void idct16(short data[MB_SIZE][MB_SIZE], unsigned char pixels[MB_SIZE][MB_SIZE])
+void idct16(const short data[MB_SIZE][MB_SIZE], unsigned char pixels[MB_SIZE][MB_SIZE])
 {
 	float in[MB_SIZE];
 	float out[MB_SIZE];
@@ -254,7 +254,7 @@ void idct16(short data[MB_SIZE][MB_SIZE], unsigned char pixels[MB_SIZE][MB_SIZE]
 	}
 }
 
-void idct4(short data[4][4], unsigned char pixels[4][4])
+void idct4(const short data[4][4], unsigned char pixels[4][4])
 {
 	float in[4];
 	float out[4];
@@ -293,8 +293,8 @@ void idct4(short data[4][4], unsigned char pixels[4][4])
 	}
 }
 
-void dct_decode_block(short yin[MB_SIZE][MB_SIZE], short uin[4][4],
-                      short vin[4][4], unsigned char yout[MB_SIZE][MB_SIZE],
+void dct_decode_block(const short yin[MB_SIZE][MB_SIZE], const short uin[4][4],
+                      const short vin[4][4], unsigned char yout[MB_SIZE][MB_SIZE],
                       unsigned char uout[4][4], unsigned char vout[4][4])
 {
     idct16(yin, yout);
