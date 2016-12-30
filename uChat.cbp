@@ -20,7 +20,6 @@
 				</Compiler>
 				<Linker>
 					<Add option="-pg -lgmon" />
-					<Add library="gcov" />
 				</Linker>
 			</Target>
 			<Target title="Release">
@@ -54,7 +53,6 @@
 			<Add library="oleaut32" />
 			<Add library="strmiids" />
 			<Add library="uuid" />
-			<Add library="ws2_32" />
 			<Add library="winmm" />
 			<Add library="gdi32" />
 			<Add library="imm32" />
@@ -108,7 +106,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="net.h" />
-		<Unit filename="rle.h" />
 		<Unit filename="videoInput/videoInput.cpp" />
 		<Unit filename="videoInput/videoInput.h" />
 		<Unit filename="yuv.c">

@@ -1,6 +1,8 @@
 // ImGui - standalone example application for SDL2 + OpenGL
 // If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
 
+#define SDL_MAIN_HANDLED
+
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include <vector>
@@ -123,6 +125,9 @@ void update_ui(SDL_Window* window, GLuint rmsView_id, GLuint rawinput_id, GLuint
     ImGui::SameLine();
     ImGui::Text("Avg encode time: %i", (int) data->avg_encode_time);
 
+    ImGui::SameLine();
+    ImGui::Text("Avg KB/s: %i", (int) ((data->avg_size * 30) / 1000));
+
     ImGui::Image((void *)(intptr_t)rawinput_id, ImVec2(640, 480));
 
     ImGui::SameLine();
@@ -226,8 +231,13 @@ void* run_frame(void* param)
     return NULL;
 }
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
+    SDL_SetMainReady();
+    SDL_Init(SDL_INIT_VIDEO);
+
+    printf("PATH %s\n", getenv("PATH"));
+
     GLuint rawinput_id;
     GLuint decoded_id;
     GLuint rmsView_id;

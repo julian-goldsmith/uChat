@@ -168,7 +168,7 @@ void dct16_quantize_block(short out[MB_SIZE][MB_SIZE])
                 val = 0;
             }
 
-            out[x][y] = (short) val;
+            out[x][y] = ((short) val) & ~ 0x7;
         }
     }
 }
@@ -188,7 +188,7 @@ void dct4_quantize_block(short out[4][4])
                 val = 0;
             }
 
-            out[x][y] = (short) val;
+            out[x][y] = ((short) val) & ~0x7;
         }
     }
 }

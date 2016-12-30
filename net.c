@@ -97,6 +97,9 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
         array_t* temp = lz_decode(block);
         array_append_array(arr, temp);
 
+        array_free(temp);
+        free(block);
+
         j += templen;
     }
 
