@@ -13,6 +13,9 @@ typedef struct
     unsigned int bit_len;
 } packet_header_t;
 
+short* bwt_encode(const short* inarr, int* posp);
+short* bwt_decode(short* inarr, int inpos);
+
 unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize, short numBlocks)
 {
     unsigned char* buffer = (unsigned char*) malloc(sizeof(compressed_macroblock_t));
@@ -21,13 +24,20 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
     {
         // FIXME: don't alloc so often
-        buffer = (unsigned char*) realloc(buffer, pos + 2 + sizeof(cblock->yout) + sizeof(cblock->uout) + sizeof(cblock->vout));
+        buffer = (unsigned char*) realloc(buffer, pos + 2 + sizeof(int) + sizeof(cblock->yout) + sizeof(cblock->uout) + sizeof(cblock->vout));
 
         *(buffer + pos++) = cblock->mb_x;
         *(buffer + pos++) = cblock->mb_y;
 
-        memcpy(buffer + pos, cblock->yout, sizeof(cblock->yout));
+        //memcpy(buffer + pos, cblock->yout, sizeof(cblock->yout));
+        int bwtpos;
+        short* bwtbuf = bwt_encode(cblock->yout, &bwtpos);      // FIXME: leak
+
+        memcpy(buffer + pos, bwtbuf, sizeof(cblock->yout));
         pos += sizeof(cblock->yout);
+
+        memcpy(buffer + pos, &bwtpos, sizeof(bwtpos));
+        pos += sizeof(bwtpos);
 
         memcpy(buffer + pos, cblock->uout, sizeof(cblock->uout));
         pos += sizeof(cblock->uout);
@@ -116,6 +126,12 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
 
         memcpy(cblock->yout, bp, sizeof(cblock->yout));
         bp += sizeof(cblock->yout);
+
+        int bwtpos = *(int*) bp;
+        bp += sizeof(int);
+
+        short* bwtbuf = bwt_decode(cblock->yout, bwtpos);
+        memcpy(cblock->yout, bwtbuf, sizeof(cblock->yout));
 
         memcpy(cblock->uout, bp, sizeof(cblock->uout));
         bp += sizeof(cblock->uout);
