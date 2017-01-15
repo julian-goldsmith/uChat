@@ -124,13 +124,13 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
         cblock->mb_x = *bp++;
         cblock->mb_y = *bp++;
 
-        memcpy(cblock->yout, bp, sizeof(cblock->yout));
+        short* bwttmp = (short*) bp;
         bp += sizeof(cblock->yout);
 
         int bwtpos = *(int*) bp;
         bp += sizeof(int);
 
-        short* bwtbuf = bwt_decode(cblock->yout, bwtpos);
+        short* bwtbuf = bwt_decode(bwttmp, bwtpos);
         memcpy(cblock->yout, bwtbuf, sizeof(cblock->yout));
 
         memcpy(cblock->uout, bp, sizeof(cblock->uout));
