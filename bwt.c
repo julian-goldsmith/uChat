@@ -12,7 +12,9 @@ short** bwt_gen_rotations(const short* inarr)
 
     for(int i = 0; i < 256; i++)
     {
-        outarr[i] = block + 256 - i;
+        short* tb = block + 256 - i;
+
+        outarr[i] = tb;
     }
 
     return outarr;
@@ -35,7 +37,7 @@ int bwt_sort_shorts(const void* p, const void* q)
 short* bwt_encode(const short* inarr, int* posp)
 {
     short* outarr = (short*) calloc(256, sizeof(short));
-    int pos = -1;
+    int pos = 0;
 
     // FIXME: not 100% sure this sort is right
     short** rots = bwt_gen_rotations(inarr);       // array of short*s
@@ -71,14 +73,11 @@ void shift_rot(short* rot, int q)
 short* bwt_decode(short* inarr, int inpos)
 {
     short** rots = (short**) calloc(256, sizeof(short*));
-    short* block = (short*) calloc(2 * 256, sizeof(short));
-
-    memcpy(block, inarr, sizeof(short) * 256);
-    memcpy(block + 256, inarr, sizeof(short) * 256);
+    short* block = (short*) calloc(256 * 256, sizeof(short));
 
     for(int i = 0; i < 256; i++)
     {
-        rots[i] = block + 256 - i;
+        rots[i] = block + 256 * i;
     }
 
     for(int i = 0; i < 256; i++)
