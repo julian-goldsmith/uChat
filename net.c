@@ -29,15 +29,8 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
         *(buffer + pos++) = cblock->mb_x;
         *(buffer + pos++) = cblock->mb_y;
 
-        //memcpy(buffer + pos, cblock->yout, sizeof(cblock->yout));
-        int bwtpos;
-        short* bwtbuf = bwt_encode(cblock->yout, &bwtpos);      // FIXME: leak
-
-        memcpy(buffer + pos, bwtbuf, sizeof(cblock->yout));
+        memcpy(buffer + pos, cblock->yout, sizeof(cblock->yout));
         pos += sizeof(cblock->yout);
-
-        memcpy(buffer + pos, &bwtpos, sizeof(bwtpos));
-        pos += sizeof(bwtpos);
 
         memcpy(buffer + pos, cblock->uout, sizeof(cblock->uout));
         pos += sizeof(cblock->uout);
@@ -50,22 +43,22 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     header.num_blocks = numBlocks;
     header.bit_len = pos;
 
-    array_t* lz_compressed = array_create(2, pos);
+    array_sint16_t* lz_compressed = array_sint16_create(pos);
 
     for(int i = 0; i < pos; i += 65536)
     {
         unsigned int tempcount = (i + 65536 > pos) ? pos - i : 65536;
-        unsigned short* outlen = (unsigned short*) array_get_new(lz_compressed);
+        unsigned short* outlen = (unsigned short*) array_sint16_get_new(lz_compressed);
         unsigned int oldlen = lz_compressed->len;
 
         lz_encode(buffer + i, tempcount, lz_compressed);
         *outlen = lz_compressed->len - oldlen - 1;
     }
 
-    lz_compressed->len *= 2;
-    lz_compressed->item_size = 1;
+    //lz_compressed->len *= 2;
+    //lz_compressed->item_size = 1;
 
-    array_t* huff_compressed = huffman_encode(lz_compressed->base, lz_compressed->len, header.frequencies, &header.bit_len);
+    array_uint8_t* huff_compressed = huffman_encode(lz_compressed->base, lz_compressed->len * 2, header.frequencies, &header.bit_len);
 
     header.compressed_len = huff_compressed->len;
 
@@ -76,8 +69,8 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     memcpy(retval + sizeof(packet_header_t), huff_compressed->base, header.compressed_len);
 
     free(buffer);
-    array_free(lz_compressed);
-    array_free(huff_compressed);
+    array_sint16_free(lz_compressed);
+    array_uint8_free(huff_compressed);
 
     return retval;
 }
@@ -89,25 +82,27 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
     assert(header->num_blocks >= 0);
     *numBlocks = header->num_blocks;
 
-    array_t* unhuff = huffman_decode(data + sizeof(packet_header_t),
+    array_uint8_t* unhuff = huffman_decode(data + sizeof(packet_header_t),
                         header->compressed_len, header->frequencies, header->bit_len);
 
     assert(unhuff->len % 2 == 0);
-    unhuff->item_size = sizeof(short);
-    unhuff->len /= 2;
+    //unhuff->item_size = sizeof(short);
+    //unhuff->len /= 2;
 
-    array_t* arr = array_create(1, unhuff->len * 2);
+    array_sint16_t* unhuff16 = array_sint16_create_from_pointer(unhuff->base, unhuff->len / 2);
+
+    array_uint8_t* arr = array_uint8_create(unhuff->len * 2);
 
     unsigned int j = 0;
     while(j < unhuff->len)
     {
-        unsigned short templen = *(unsigned short*) array_get(unhuff, j++) + 1;
-        array_t* block = array_create_from_pointer(array_get(unhuff, j), 2, templen);
+        unsigned short templen = *(unsigned short*) array_sint16_get(unhuff16, j++) + 1;
+        array_sint16_t* block = array_sint16_create_from_pointer(array_sint16_get(unhuff16, j), templen);
 
-        array_t* temp = lz_decode(block);
-        array_append_array(arr, temp);
+        array_uint8_t* temp = lz_decode(block);
+        array_uint8_append_array(arr, temp);
 
-        array_free(temp);
+        array_uint8_free(temp);
         free(block);
 
         j += templen;
@@ -124,14 +119,8 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
         cblock->mb_x = *bp++;
         cblock->mb_y = *bp++;
 
-        short* bwttmp = (short*) bp;
+        memcpy(cblock->yout, bp, sizeof(cblock->yout));
         bp += sizeof(cblock->yout);
-
-        int bwtpos = *(int*) bp;
-        bp += sizeof(int);
-
-        short* bwtbuf = bwt_decode(bwttmp, bwtpos);
-        memcpy(cblock->yout, bwtbuf, sizeof(cblock->yout));
 
         memcpy(cblock->uout, bp, sizeof(cblock->uout));
         bp += sizeof(cblock->uout);
@@ -141,7 +130,7 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
     }
 
     free(unhuff);
-    array_free(arr);
+    array_uint8_free(arr);
 
     return cblocks;
 }

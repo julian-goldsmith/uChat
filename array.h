@@ -5,146 +5,164 @@
 #include <memory.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdint.h>
 
-typedef struct
-{
-    unsigned int len;
-    unsigned int capacity;
-    unsigned int item_size;
-    unsigned char* base;
-    unsigned short magic;
-} array_t;
-
-inline array_t* array_create(unsigned int item_size, unsigned int initial_capacity)
-{
-    array_t* array = (array_t*) malloc(sizeof(array_t));
-
-    array->len = 0;
-    array->capacity = initial_capacity;
-    array->item_size = item_size;
-    array->base = (unsigned char*) malloc(array->capacity * array->item_size);
-    array->magic = 0x1234;
-
-    return array;
+#define array_define_type(name, type) \
+    typedef struct \
+    { \
+        unsigned int len; \
+        unsigned int capacity; \
+        type *base; \
+        unsigned short magic; \
+    } array_ ## name ## _t; \
+\
+inline array_ ## name ## _t* array_ ## name ## _create(unsigned int initial_capacity) \
+{ \
+    array_ ## name ##_t* array = (array_ ## name ## _t*) malloc(sizeof(array_ ## name ## _t)); \
+    \
+    array->len = 0; \
+    array->capacity = initial_capacity; \
+    array->base = (type*) malloc(array->capacity * sizeof(type)); \
+    array->magic = 0x1234; \
+    \
+    return array; \
+} \
+\
+inline array_ ## name ## _t* array_ ## name ## _create_from_pointer(void* pointer, unsigned int len) \
+{ \
+    array_ ## name ## _t* array = (array_ ## name ## _t*) malloc(sizeof(array_ ## name ## _t)); \
+    \
+    /* FIXME: copy data at pointer instead of using like this */ \
+    array->len = len; \
+    array->capacity = len; \
+    array->base = (type*) pointer; \
+    \
+    return array; \
+} \
+\
+inline void array_ ## name ## _free(array_ ## name ## _t* array) \
+{ \
+    if(array->magic != 0x1234) \
+    { \
+        assert(array->magic == 0x1234); \
+    } \
+    free(array->base); \
+    free(array); \
+} \
+\
+inline void* array_ ## name ## _get(array_ ## name ## _t* array, unsigned int idx) \
+{ \
+    return (void*) (array->base + idx * sizeof(type)); \
+} \
+\
+inline void array_ ## name ## _set(array_ ## name ## _t* array, unsigned int idx, void* item) \
+{ \
+    assert(idx < array->len); \
+    \
+    memcpy(array->base + idx * sizeof(type), item, sizeof(type)); \
+} \
+\
+inline unsigned int array_ ## name ## _append(array_ ## name ## _t* array, void* item) \
+{ \
+    if(array->capacity == array->len) \
+    { \
+        array->capacity *= 2; \
+        array->base = (type*) realloc(array->base, array->capacity * sizeof(type)); \
+    } \
+    \
+    array->len++; \
+    \
+    if(item != NULL) \
+    { \
+        array_ ## name ## _set(array, array->len - 1, item); \
+    } \
+    \
+    return array->len - 1; \
+} \
+\
+inline void array_ ## name ## _appendm(array_ ## name ## _t* array, void* item, unsigned int count) \
+{ \
+    if(array->capacity <= array->len + count) \
+    { \
+        array->capacity *= 2; \
+        \
+        if(array->capacity <= array->len + count) \
+        { \
+            array->capacity += count; \
+        } \
+        \
+        array->base = (type*) realloc(array->base, array->capacity * sizeof(type)); \
+    } \
+    \
+    memcpy(array->base + array->len * sizeof(type), item, count * sizeof(type)); \
+    \
+    array->len += count; \
+} \
+\
+inline void* array_ ## name ## _get_new(array_ ## name ## _t* array) \
+{ \
+    unsigned int idx = array_ ## name ## _append(array, NULL); \
+    return (void*) (array->base + idx * sizeof(type)); \
+} \
+\
+inline array_ ## name ## _t* array_ ## name ## _copy(array_ ## name ## _t* array) \
+{ \
+    array_ ## name ## _t* new_array = array_ ## name ## _create(array->capacity); \
+    \
+    new_array->len = array->len; \
+    memcpy(new_array->base, array->base, array->len * sizeof(type)); \
+    \
+    return new_array; \
+} \
+\
+inline void array_ ## name ## _append_array(array_ ## name ## _t* array1, array_ ## name ## _t* array2) \
+{ \
+    if(array1->capacity <= array1->len + array2->len) \
+    { \
+        array1->capacity *= 2; \
+        \
+        if(array1->capacity <= array1->len + array2->len) \
+        { \
+            array1->capacity += array2->len; \
+        } \
+        \
+        array1->base = (type*) realloc(array1->base, array1->capacity * sizeof(type)); \
+    } \
+    \
+    memcpy(array1->base + array1->len * sizeof(type), array2->base, array2->len * sizeof(type)); \
+    array1->len += array2->len; \
+} \
+\
+inline void array_ ## name ## _pop(array_ ## name ## _t* array) \
+{ \
+    assert(array->len > 0); \
+    array->len--; \
+} \
+\
+inline void array_ ## name ## _clear(array_ ## name ## _t* array) \
+{ \
+    array->len = 0; \
 }
 
-inline array_t* array_create_from_pointer(void* pointer, unsigned int item_size, unsigned int len)
-{
-    array_t* array = (array_t*) malloc(sizeof(array_t));
+// this is apparently necessary for C99
+#define array_implement_type(name, type) \
+    array_ ## name ## _t* array_ ## name ## _create(unsigned int initial_capacity); \
+    array_ ## name ## _t* array_ ## name ## _create_from_pointer(void* pointer, unsigned int len); \
+    void array_ ## name ## _free(array_ ## name ## _t* array); \
+    void* array_ ## name ## _get(array_ ## name ## _t* array, unsigned int idx); \
+    void array_ ## name ## _set(array_ ## name ## _t* array, unsigned int idx, void* item); \
+    unsigned int array_ ## name ## _append(array_ ## name ## _t* array, void* item); \
+    array_ ## name ## _t* array_ ## name ## _copy(array_ ## name ## _t* array); \
+    void array_ ## name ## _append_array(array_ ## name ## _t* array1, array_ ## name ## _t* array2); \
+    void array_ ## name ## _pop(array_ ## name ## _t* array); \
+    void* array_ ## name ## _get_new(array_ ## name ## _t* array); \
+    void array_ ## name ## _clear(array_ ## name ## _t* array); \
+    void array_ ## name ## _append1(array_ ## name ## _t* array, void* item); \
+    void array_ ## name ## _appendm(array_ ## name ## _t* array, void* item, unsigned int count);
 
-    // FIXME: copy data at pointer instead of using like this
-    array->len = len;
-    array->capacity = len;
-    array->item_size = item_size;
-    array->base = (unsigned char*) pointer;
-
-    return array;
-}
-
-inline void array_free(array_t* array)
-{
-    if(array->magic != 0x1234)
-    {
-        assert(array->magic == 0x1234);
-    }
-    free(array->base);
-    free(array);
-}
-
-inline void* array_get(array_t* array, unsigned int idx)
-{
-    return (void*) (array->base + idx * array->item_size);
-}
-
-inline void array_set(array_t* array, unsigned int idx, void* item)
-{
-    assert(idx < array->len);
-
-    memcpy(array->base + idx * array->item_size, item, array->item_size);
-}
-
-inline unsigned int array_append(array_t* array, void* item)
-{
-    if(array->capacity == array->len)
-    {
-        array->capacity *= 2;
-        array->base = (unsigned char*) realloc(array->base, array->capacity * array->item_size);
-    }
-
-    array->len++;
-
-    if(item != NULL)
-    {
-        array_set(array, array->len - 1, item);
-    }
-
-    return array->len - 1;
-}
-
-inline void array_appendm(array_t* array, void* item, unsigned int count)
-{
-    if(array->capacity <= array->len + count)
-    {
-        array->capacity *= 2;
-
-        if(array->capacity <= array->len + count)
-        {
-            array->capacity += count;
-        }
-
-        array->base = (unsigned char*) realloc(array->base, array->capacity * array->item_size);
-    }
-
-    memcpy(array->base + array->len * array->item_size, item, count * array->item_size);
-
-    array->len += count;
-}
-
-inline void* array_get_new(array_t* array)
-{
-    unsigned int idx = array_append(array, NULL);
-    return (void*) (array->base + idx * array->item_size);
-}
-
-inline array_t* array_copy(array_t* array)
-{
-    array_t* new_array = array_create(array->item_size, array->capacity);
-
-    new_array->len = array->len;
-    memcpy(new_array->base, array->base, array->len * array->item_size);
-
-    return new_array;
-}
-
-inline void array_append_array(array_t* array1, array_t* array2)
-{
-    assert(array1->item_size == array2->item_size);
-
-    if(array1->capacity <= array1->len + array2->len)
-    {
-        array1->capacity *= 2;
-
-        if(array1->capacity <= array1->len + array2->len)
-        {
-            array1->capacity += array2->len;
-        }
-
-        array1->base = (unsigned char*) realloc(array1->base, array1->capacity * array1->item_size);
-    }
-
-    memcpy(array1->base + array1->len * array1->item_size, array2->base, array2->len * array2->item_size);
-    array1->len += array2->len;
-}
-
-inline void array_pop(array_t* array)
-{
-    assert(array->len > 0);
-    array->len--;
-}
-
-inline void array_clear(array_t* array)
-{
-    array->len = 0;
-}
+array_define_type(uint8, unsigned char)
+array_define_type(sint16, short)
+array_define_type(uint64, uint64_t)
+array_define_type(uint, unsigned int)
 
 #endif // ARRAY_H_INCLUDED

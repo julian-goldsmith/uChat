@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 void array_pool_init();
-array_t* array_pool_get();
+array_uint8_t* array_pool_get();
 void array_pool_release_all();
 
 #ifdef __cplusplus

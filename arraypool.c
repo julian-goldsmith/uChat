@@ -8,7 +8,7 @@
 
 typedef struct pool_chunk_s
 {
-    array_t** items;
+    array_uint8_t** items;
     uint32_t bitmap;
     struct pool_chunk_s* next;
 } pool_chunk_t;
@@ -24,11 +24,11 @@ pool_chunk_t* array_pool_create_chunk()
     pool_chunk_t* chunk = (pool_chunk_t*) malloc(sizeof(pool_chunk_t));
     chunk->bitmap = 0;
     chunk->next = NULL;
-    chunk->items = (array_t**) malloc(sizeof(array_t*) * 32);
+    chunk->items = (array_uint8_t**) malloc(sizeof(array_uint8_t*) * 32);
 
     for(unsigned int i = 0; i < 32; i++)
     {
-        chunk->items[i] = array_create(1, 25);
+        chunk->items[i] = array_uint8_create(25);
     }
 
     return chunk;
@@ -49,7 +49,7 @@ void array_pool_init()
     curr_free = root;
 }
 
-array_t* array_pool_get()
+array_uint8_t* array_pool_get()
 {
     if(curr_free->bitmap == 0xFFFF)
     {
@@ -81,7 +81,7 @@ void array_pool_release_all()
 
         for(int i = 0; i < 32; i++)
         {
-            array_clear(pos->items[i]);
+            array_uint8_clear(pos->items[i]);
         }
 
         pos->bitmap = 0;

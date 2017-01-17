@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include "array.h"
 #include "hashtable.h"
-#include "arraypool.h"
 
 hash_table_t* ht_create()
 {
@@ -10,8 +9,8 @@ hash_table_t* ht_create()
     for(unsigned int i = 0; i < HT_NUM_BUCKETS; i++)
     {
         ht->buckets[i] = malloc(sizeof(bucket_t));
-        ht->buckets[i]->keys = array_create(sizeof(uint64_t), 5);
-        ht->buckets[i]->vals = array_create(sizeof(unsigned int), 5);
+        ht->buckets[i]->keys = array_uint64_create(5);
+        ht->buckets[i]->vals = array_uint_create(5);
     }
 
     return ht;
@@ -26,8 +25,8 @@ void ht_free(hash_table_t* ht)
         assert(bucket->vals != NULL);
         assert(bucket->keys != NULL);
 
-        array_free(bucket->keys);
-        array_free(bucket->vals);
+        array_uint64_free(bucket->keys);
+        array_uint_free(bucket->vals);
 
         free(bucket);
     }
@@ -44,8 +43,8 @@ void ht_clear(hash_table_t* ht)
         assert(bucket->vals != NULL);
         assert(bucket->keys != NULL);
 
-        array_clear(bucket->keys);
-        array_clear(bucket->vals);
+        array_uint64_clear(bucket->keys);
+        array_uint_clear(bucket->vals);
     }
 }
 
@@ -61,6 +60,6 @@ uint64_t fnv_hash (void *key, int len)
     return h;
 }
 
-void ht_add(hash_table_t* ht, array_t* key, unsigned int val);
-int ht_get(hash_table_t* ht, array_t* key);
+void ht_add(hash_table_t* ht, array_uint8_t* key, unsigned int val);
+int ht_get(hash_table_t* ht, array_uint8_t* key);
 int ht_get2(hash_table_t* ht, uint64_t hash);
