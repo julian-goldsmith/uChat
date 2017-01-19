@@ -33,7 +33,7 @@ inline void bitstream_append(bitstream_t* bs, bool value)
     if(bs->pos % 8 == 0)
     {
         unsigned char c = 0;
-        array_uint8_append(bs->array, &c);
+        array_uint8_append(bs->array, c);
     }
 
     unsigned char data = bs->array->base[bs->pos / 8];

@@ -28,7 +28,7 @@ inline array_ ## name ## _t* array_ ## name ## _create(unsigned int initial_capa
     return array; \
 } \
 \
-inline array_ ## name ## _t* array_ ## name ## _create_from_pointer(void* pointer, unsigned int len) \
+inline array_ ## name ## _t* array_ ## name ## _create_from_pointer(type* pointer, unsigned int len) \
 { \
     array_ ## name ## _t* array = (array_ ## name ## _t*) malloc(sizeof(array_ ## name ## _t)); \
     \
@@ -50,19 +50,19 @@ inline void array_ ## name ## _free(array_ ## name ## _t* array) \
     free(array); \
 } \
 \
-inline void* array_ ## name ## _get(array_ ## name ## _t* array, unsigned int idx) \
+inline type array_ ## name ## _get(array_ ## name ## _t* array, unsigned int idx) \
 { \
-    return (void*) (array->base + idx * sizeof(type)); \
+    return array->base[idx]; \
 } \
 \
-inline void array_ ## name ## _set(array_ ## name ## _t* array, unsigned int idx, void* item) \
+inline void array_ ## name ## _set(array_ ## name ## _t* array, unsigned int idx, type item) \
 { \
     assert(idx < array->len); \
     \
-    memcpy(array->base + idx * sizeof(type), item, sizeof(type)); \
+    memcpy(array->base + idx, &item, sizeof(type)); \
 } \
 \
-inline unsigned int array_ ## name ## _append(array_ ## name ## _t* array, void* item) \
+inline unsigned int array_ ## name ## _append(array_ ## name ## _t* array, type item) \
 { \
     if(array->capacity == array->len) \
     { \
@@ -71,16 +71,12 @@ inline unsigned int array_ ## name ## _append(array_ ## name ## _t* array, void*
     } \
     \
     array->len++; \
-    \
-    if(item != NULL) \
-    { \
-        array_ ## name ## _set(array, array->len - 1, item); \
-    } \
+    array_ ## name ## _set(array, array->len - 1, item); \
     \
     return array->len - 1; \
 } \
 \
-inline void array_ ## name ## _appendm(array_ ## name ## _t* array, void* item, unsigned int count) \
+inline void array_ ## name ## _appendm(array_ ## name ## _t* array, type* item, unsigned int count) \
 { \
     if(array->capacity <= array->len + count) \
     { \
@@ -94,20 +90,17 @@ inline void array_ ## name ## _appendm(array_ ## name ## _t* array, void* item, 
         array->base = (type*) realloc(array->base, array->capacity * sizeof(type)); \
     } \
     \
-    memcpy(array->base + array->len * sizeof(type), item, count * sizeof(type)); \
+    memcpy(array->base + array->len, &item, count * sizeof(type)); \
     \
     array->len += count; \
 } \
 \
-inline void* array_ ## name ## _get_new(array_ ## name ## _t* array) \
-{ \
-    unsigned int idx = array_ ## name ## _append(array, NULL); \
-    return (void*) (array->base + idx * sizeof(type)); \
-} \
-\
 inline array_ ## name ## _t* array_ ## name ## _copy(array_ ## name ## _t* array) \
 { \
+    assert(array->capacity > 0); \
     array_ ## name ## _t* new_array = array_ ## name ## _create(array->capacity); \
+    assert(new_array->capacity > 0); \
+    assert(new_array->base != NULL); \
     \
     new_array->len = array->len; \
     memcpy(new_array->base, array->base, array->len * sizeof(type)); \
@@ -129,7 +122,7 @@ inline void array_ ## name ## _append_array(array_ ## name ## _t* array1, array_
         array1->base = (type*) realloc(array1->base, array1->capacity * sizeof(type)); \
     } \
     \
-    memcpy(array1->base + array1->len * sizeof(type), array2->base, array2->len * sizeof(type)); \
+    memcpy(array1->base + array1->len, array2->base, array2->len * sizeof(type)); \
     array1->len += array2->len; \
 } \
 \
@@ -147,18 +140,18 @@ inline void array_ ## name ## _clear(array_ ## name ## _t* array) \
 // this is apparently necessary for C99
 #define array_implement_type(name, type) \
     array_ ## name ## _t* array_ ## name ## _create(unsigned int initial_capacity); \
-    array_ ## name ## _t* array_ ## name ## _create_from_pointer(void* pointer, unsigned int len); \
+    array_ ## name ## _t* array_ ## name ## _create_from_pointer(type* pointer, unsigned int len); \
     void array_ ## name ## _free(array_ ## name ## _t* array); \
-    void* array_ ## name ## _get(array_ ## name ## _t* array, unsigned int idx); \
-    void array_ ## name ## _set(array_ ## name ## _t* array, unsigned int idx, void* item); \
-    unsigned int array_ ## name ## _append(array_ ## name ## _t* array, void* item); \
+    type array_ ## name ## _get(array_ ## name ## _t* array, unsigned int idx); \
+    void array_ ## name ## _set(array_ ## name ## _t* array, unsigned int idx, type item); \
+    unsigned int array_ ## name ## _append(array_ ## name ## _t* array, type item); \
     array_ ## name ## _t* array_ ## name ## _copy(array_ ## name ## _t* array); \
     void array_ ## name ## _append_array(array_ ## name ## _t* array1, array_ ## name ## _t* array2); \
     void array_ ## name ## _pop(array_ ## name ## _t* array); \
-    void* array_ ## name ## _get_new(array_ ## name ## _t* array); \
+    type array_ ## name ## _get_new(array_ ## name ## _t* array); \
     void array_ ## name ## _clear(array_ ## name ## _t* array); \
-    void array_ ## name ## _append1(array_ ## name ## _t* array, void* item); \
-    void array_ ## name ## _appendm(array_ ## name ## _t* array, void* item, unsigned int count);
+    void array_ ## name ## _append1(array_ ## name ## _t* array, type item); \
+    void array_ ## name ## _appendm(array_ ## name ## _t* array, type* item, unsigned int count);
 
 array_define_type(uint8, unsigned char)
 array_define_type(sint16, short)

@@ -25,8 +25,8 @@ inline void ht_add(hash_table_t* ht, array_uint8_t* key, unsigned int val)
     unsigned int bi = hash & (HT_NUM_BUCKETS - 1);
     bucket_t* bucket = ht->buckets[bi];
 
-    array_uint64_append(bucket->keys, &hash);
-    array_uint_append(bucket->vals, &val);
+    array_uint64_append(bucket->keys, hash);
+    array_uint_append(bucket->vals, val);
 }
 
 inline int ht_get2(hash_table_t* ht, uint64_t hash)
@@ -36,11 +36,11 @@ inline int ht_get2(hash_table_t* ht, uint64_t hash)
 
     for(int i = 0; i < bucket->keys->len; i++)
     {
-        uint64_t bk = *(uint64_t*) array_uint64_get(bucket->keys, i);
+        uint64_t bk = array_uint64_get(bucket->keys, i);
 
         if(bk == hash)
         {
-            return *(int*) array_uint_get(bucket->vals, i);
+            return array_uint_get(bucket->vals, i);
         }
     }
 

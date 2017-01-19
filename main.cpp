@@ -69,6 +69,19 @@ SDL_Window* init_ui(SDL_GLContext* glcontext, GLuint* rawinput_id, GLuint* decod
     glGenTextures(1, decoded_id);
     glGenTextures(1, rmsView_id);
 
+    unsigned char* blank = (unsigned char*) calloc(1, 3*640*480);
+    glBindTexture(GL_TEXTURE_2D, *rawinput_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, blank);
+
+    glBindTexture(GL_TEXTURE_2D, *decoded_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, blank);
+
+    glBindTexture(GL_TEXTURE_2D, *rmsView_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, blank);
+
     return window;
 }
 

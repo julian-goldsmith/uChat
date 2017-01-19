@@ -16,8 +16,8 @@ typedef struct node_s
     unsigned char val;
 } node_t;
 
-array_define_type(node_t, node_t)
-array_implement_type(node_t, node_t)
+array_define_type(node_tp, node_t*)
+array_implement_type(node_tp, node_t*)
 
 typedef struct
 {
@@ -34,8 +34,8 @@ typedef struct
     node_t* node;
 } state_t;
 
-array_define_type(state_t, state_t)
-array_implement_type(state_t, state_t)
+array_define_type(state_tp, state_t*)
+array_implement_type(state_tp, state_t*)
 
 int huffman_freq_sort(const void* val1, const void* val2)
 {
@@ -50,31 +50,33 @@ int huffman_freq_sort(const void* val1, const void* val2)
         return 0;
 }
 
-node_t* buildInternalNode(node_t* left, node_t* right, array_node_t_t* all_nodes)
+node_t* buildInternalNode(node_t* left, node_t* right, array_node_tp_t* all_nodes)
 {
-    node_t* node = (node_t*) array_node_t_get_new(all_nodes);
+    node_t* node = (node_t*) calloc(1, sizeof(node_t));//array_node_tp_get_new(all_nodes); // FIXME: leaks
     node->count = left->count + right->count;
     node->is_leaf = false;
     node->left = left;
     node->right = right;
     node->val = 0;
+    array_node_tp_append(all_nodes, node);
 
     return node;
 }
 
-node_t* huffman_build_tree(frequency_t freqs[256], array_node_t_t* all_nodes)
+node_t* huffman_build_tree(frequency_t freqs[256], array_node_tp_t* all_nodes)
 {
     int listLen = 256;
     node_t* list[256];
 
     for(int i = 0; i < 256; i++)
     {
-        list[i] = (node_t*) array_node_t_get_new(all_nodes);
+        list[i] = (node_t*) calloc(1, sizeof(node_t));//array_node_tp_get_new(all_nodes);
         list[i]->val = freqs[i].val;
         list[i]->count = freqs[i].count;
         list[i]->is_leaf = true;
         list[i]->left = NULL;
         list[i]->right = NULL;
+        array_node_tp_append(all_nodes, list[i]);
     }
 
     while(listLen > 1)
@@ -90,16 +92,17 @@ node_t* huffman_build_tree(frequency_t freqs[256], array_node_t_t* all_nodes)
     return retval;
 }
 
-void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_state_t_t* history)
+void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_state_tp_t* history)
 {
-    state_t* initial_state = (state_t*) array_state_t_get_new(history);
+    state_t* initial_state = (state_t*) calloc(1, sizeof(state_t));//array_state_tp_get_new(history);
     initial_state->state = ST_RIGHT;
     initial_state->node = root;
+    array_state_tp_append(history, initial_state);
 
     while(true)
     {
         // put our state in a local variable, so it's not overwritten
-        state_t* curr_state = array_state_t_get(history, history->len - 1);
+        state_t* curr_state = array_state_tp_get(history, history->len - 1);
 
         if(curr_state->state == ST_RIGHT || curr_state->state == ST_LEFT)
         {
@@ -116,23 +119,24 @@ void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_stat
             }
             else if(!next_node->is_leaf && next_node->count >= count)
             {
-                state_t* next_state = (state_t*) array_state_t_get_new(history);
+                state_t* next_state = (state_t*) calloc(1, sizeof(state_t));//array_state_tp_get_new(history);
                 next_state->state = ST_RIGHT;
                 next_state->node = next_node;
+                array_state_tp_append(history, next_state);
             }
         }
         else
         {
-            array_state_t_pop(history);
+            array_state_tp_pop(history);
         }
     }
 }
 
-void huffman_flatten_history(array_state_t_t* history, bitstream_t* bs)
+void huffman_flatten_history(array_state_tp_t* history, bitstream_t* bs)
 {
     for(int i = 0; i < history->len; i++)
     {
-        state_t* state = (state_t*) array_state_t_get(history, i);
+        state_t* state = (state_t*) array_state_tp_get(history, i);
         bitstream_append(bs, state->state == ST_LEFT);
     }
 }
@@ -140,7 +144,7 @@ void huffman_flatten_history(array_state_t_t* history, bitstream_t* bs)
 array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned short frequencies[256], unsigned int* bit_len)
 {
     frequency_t freqs[256];
-    array_node_t_t* all_nodes = array_node_t_create(512);
+    array_node_tp_t* all_nodes = array_node_tp_create(512);
 
     for(unsigned int s = 0; s < 256; s++)
     {
@@ -156,18 +160,18 @@ array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned s
     node_t* root = huffman_build_tree(freqs, all_nodes);
 
     bitstream_t* encoded_stream = bitstream_create();
-    array_state_t_t* history = array_state_t_create(8);
+    array_state_tp_t* history = array_state_tp_create(8);
 
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        array_state_t_clear(history);
+        array_state_tp_clear(history);
 
         huffman_encode_byte(root, *item, freqs[*item].count, history);
         huffman_flatten_history(history, encoded_stream);
     }
 
-    array_state_t_free(history);
-    array_node_t_free(all_nodes);
+    array_state_tp_free(history);
+    array_node_tp_free(all_nodes);
 
     bitstream_array_adjust(encoded_stream);
 
@@ -189,7 +193,7 @@ array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned s
 array_uint8_t* huffman_decode(unsigned char* data, int datalen, const unsigned short frequencies[256], unsigned int bit_len)
 {
     frequency_t freqs[256];
-    array_node_t_t* all_nodes = array_node_t_create(512);
+    array_node_tp_t* all_nodes = array_node_tp_create(512);
 
     for(int i = 0; i < 256; i++)
     {
@@ -222,14 +226,14 @@ array_uint8_t* huffman_decode(unsigned char* data, int datalen, const unsigned s
 
         if(new_root->is_leaf)
         {
-            array_uint8_append(out_array, &new_root->val);
+            array_uint8_append(out_array, new_root->val);
             new_root = root;
         }
 
         spos++;
     }
 
-    array_node_t_free(all_nodes);
+    array_node_tp_free(all_nodes);
 
     return out_array;
 }
