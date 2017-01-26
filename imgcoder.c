@@ -178,7 +178,7 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
 
         short tempdyout[MB_SIZE][MB_SIZE];
         dct_encode_block(yout, uout, vout, tempdyout, cblock->uout, cblock->vout);
-        ic_zigzag_array(tempdyout, cblock->yout);
+        ic_zigzag_array((const short(*)[16]) tempdyout, cblock->yout);
     }
 }
 
@@ -234,7 +234,7 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
         short tempdyout[MB_SIZE][MB_SIZE];
         ic_unzigzag_array(block->yout, tempdyout);
 
-        dct_decode_block(tempdyout, block->uout, block->vout,
+        dct_decode_block((const short(*)[MB_SIZE]) tempdyout, block->uout, block->vout,
                          yout, uout, vout);
 
         yuv_decode((const unsigned char(*)[16]) yout, (const unsigned char(*)[4]) uout,

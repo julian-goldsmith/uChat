@@ -72,9 +72,6 @@
 		</Unit>
 		<Unit filename="arraypool.h" />
 		<Unit filename="bitstream.h" />
-		<Unit filename="bwt.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="dct.c">
 			<Option compilerVar="CC" />
 		</Unit>

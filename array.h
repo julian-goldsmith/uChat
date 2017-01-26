@@ -7,6 +7,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#ifdef DEBUG
+#include <stdbool.h>
+#endif
+
+// FIXME: remove from_pointer when not debugging
+// FIXME: allow arrays to be created on stack
+//        (i.e. array_xx_create doesn't malloc array_xx_t, takes in pointer)
 #define array_define_type(name, type) \
     typedef struct \
     { \
@@ -14,6 +21,7 @@
         unsigned int capacity; \
         type *base; \
         unsigned short magic; \
+        bool from_pointer; \
     } array_ ## name ## _t; \
 \
 inline array_ ## name ## _t* array_ ## name ## _create(unsigned int initial_capacity) \
@@ -25,6 +33,8 @@ inline array_ ## name ## _t* array_ ## name ## _create(unsigned int initial_capa
     array->base = (type*) malloc(array->capacity * sizeof(type)); \
     array->magic = 0x1234; \
     \
+    array->from_pointer = false; \
+    \
     return array; \
 } \
 \
@@ -32,20 +42,21 @@ inline array_ ## name ## _t* array_ ## name ## _create_from_pointer(type* pointe
 { \
     array_ ## name ## _t* array = (array_ ## name ## _t*) malloc(sizeof(array_ ## name ## _t)); \
     \
-    /* FIXME: copy data at pointer instead of using like this */ \
+    /* FIXME: possibly copy data at pointer instead of using like this */ \
     array->len = len; \
     array->capacity = len; \
     array->base = (type*) pointer; \
+    \
+    array->from_pointer = true; \
     \
     return array; \
 } \
 \
 inline void array_ ## name ## _free(array_ ## name ## _t* array) \
 { \
-    if(array->magic != 0x1234) \
-    { \
-        assert(array->magic == 0x1234); \
-    } \
+    assert(array->magic == 0x1234); \
+    assert(!array->from_pointer); \
+    \
     free(array->base); \
     free(array); \
 } \
@@ -90,7 +101,7 @@ inline void array_ ## name ## _appendm(array_ ## name ## _t* array, type* item, 
         array->base = (type*) realloc(array->base, array->capacity * sizeof(type)); \
     } \
     \
-    memcpy(array->base + array->len, &item, count * sizeof(type)); \
+    memcpy(array->base + array->len, item, count * sizeof(type)); \
     \
     array->len += count; \
 } \
