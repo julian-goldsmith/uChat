@@ -15,6 +15,7 @@ typedef struct
 
 typedef struct
 {
+    short magic;
     unsigned char mb_x;
     unsigned char mb_y;
     short yout[MB_SIZE][MB_SIZE];

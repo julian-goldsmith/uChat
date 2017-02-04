@@ -94,7 +94,7 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
     array_uint8_t* arr = array_uint8_create(unhuff->len * 2);
 
     unsigned int j = 0;
-    while(j < unhuff->len)
+    while(j < unhuff16->len)      // FIXME: should this be unhuff16?
     {
         unsigned short templen = array_sint16_get(unhuff16, j++) + 1;
         assert(templen > 0);

@@ -34,6 +34,7 @@ inline array_ ## name ## _t* array_ ## name ## _create(unsigned int initial_capa
     array->magic = 0x1234; \
     \
     array->from_pointer = false; \
+    memset(array->base, 0, array->capacity * sizeof(type)); /*FIXME: remove*/ \
     \
     return array; \
 } \
@@ -46,6 +47,7 @@ inline array_ ## name ## _t* array_ ## name ## _create_from_pointer(type* pointe
     array->len = len; \
     array->capacity = len; \
     array->base = (type*) pointer; \
+    array->magic = 0x1234; \
     \
     array->from_pointer = true; \
     \
@@ -63,11 +65,14 @@ inline void array_ ## name ## _free(array_ ## name ## _t* array) \
 \
 inline type array_ ## name ## _get(array_ ## name ## _t* array, unsigned int idx) \
 { \
+    assert(array->magic == 0x1234); \
+    assert(idx < array->len); \
     return array->base[idx]; \
 } \
 \
 inline void array_ ## name ## _set(array_ ## name ## _t* array, unsigned int idx, type item) \
 { \
+    assert(array->magic == 0x1234); \
     assert(idx < array->len); \
     \
     memcpy(array->base + idx, &item, sizeof(type)); \
@@ -75,6 +80,7 @@ inline void array_ ## name ## _set(array_ ## name ## _t* array, unsigned int idx
 \
 inline unsigned int array_ ## name ## _append(array_ ## name ## _t* array, type item) \
 { \
+    assert(array->magic == 0x1234); \
     if(array->capacity == array->len) \
     { \
         array->capacity *= 2; \
@@ -89,6 +95,7 @@ inline unsigned int array_ ## name ## _append(array_ ## name ## _t* array, type 
 \
 inline void array_ ## name ## _appendm(array_ ## name ## _t* array, type* item, unsigned int count) \
 { \
+    assert(array->magic == 0x1234); \
     if(array->capacity <= array->len + count) \
     { \
         array->capacity *= 2; \
@@ -108,6 +115,7 @@ inline void array_ ## name ## _appendm(array_ ## name ## _t* array, type* item, 
 \
 inline array_ ## name ## _t* array_ ## name ## _copy(array_ ## name ## _t* array) \
 { \
+    assert(array->magic == 0x1234); \
     assert(array->capacity > 0); \
     array_ ## name ## _t* new_array = array_ ## name ## _create(array->capacity); \
     assert(new_array->capacity > 0); \
@@ -121,6 +129,8 @@ inline array_ ## name ## _t* array_ ## name ## _copy(array_ ## name ## _t* array
 \
 inline void array_ ## name ## _append_array(array_ ## name ## _t* array1, array_ ## name ## _t* array2) \
 { \
+    assert(array1->magic == 0x1234); \
+    assert(array2->magic == 0x1234); \
     if(array1->capacity <= array1->len + array2->len) \
     { \
         array1->capacity *= 2; \
@@ -139,13 +149,16 @@ inline void array_ ## name ## _append_array(array_ ## name ## _t* array1, array_
 \
 inline void array_ ## name ## _pop(array_ ## name ## _t* array) \
 { \
+    assert(array->magic == 0x1234); \
     assert(array->len > 0); \
     array->len--; \
 } \
 \
 inline void array_ ## name ## _clear(array_ ## name ## _t* array) \
 { \
+    assert(array->magic == 0x1234); \
     array->len = 0; \
+    memset(array->base, 0, array->capacity * sizeof(type)); /*FIXME: remove*/ \
 }
 
 // this is apparently necessary for C99
@@ -159,7 +172,6 @@ inline void array_ ## name ## _clear(array_ ## name ## _t* array) \
     array_ ## name ## _t* array_ ## name ## _copy(array_ ## name ## _t* array); \
     void array_ ## name ## _append_array(array_ ## name ## _t* array1, array_ ## name ## _t* array2); \
     void array_ ## name ## _pop(array_ ## name ## _t* array); \
-    type array_ ## name ## _get_new(array_ ## name ## _t* array); \
     void array_ ## name ## _clear(array_ ## name ## _t* array); \
     void array_ ## name ## _append1(array_ ## name ## _t* array, type item); \
     void array_ ## name ## _appendm(array_ ## name ## _t* array, type* item, unsigned int count);

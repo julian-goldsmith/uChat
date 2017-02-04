@@ -167,6 +167,7 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
         macroblock_t* block = blocks + i;
         compressed_macroblock_t* cblock = cblocks + i;
 
+        cblock->magic = 0x1234;
         cblock->mb_x = block->mb_x;
         cblock->mb_y = block->mb_y;
 
@@ -225,6 +226,8 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
 
     for(const compressed_macroblock_t* block = cblocks; block < cblocks + numBlocks; block++)
     {
+        assert(block->magic == 0x1234);
+
         unsigned char pixels[MB_SIZE][MB_SIZE][3];
 
         unsigned char yout[MB_SIZE][MB_SIZE];

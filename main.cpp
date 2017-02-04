@@ -244,6 +244,8 @@ void* run_frame(void* param)
     return NULL;
 }
 
+#include "lzw.h"
+
 int main(int argc, char** argv)
 {
     SDL_SetMainReady();

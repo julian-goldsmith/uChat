@@ -40,7 +40,7 @@ hash_table_t* ht;
 void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_values)
 {
     // leaks solved with Dr. Memory
-    if(ht == NULL)
+    //if(ht == NULL)
     {
         ht = ht_create();
     }
@@ -49,17 +49,17 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
 
     for(code_pos = 0; code_pos < 256; code_pos++)
     {
-        unsigned char c = (unsigned char) code_pos;
-
-        array_uint8_t* item = array_pool_get();
-        array_uint8_append(item, c);
+        array_uint8_t* item = array_uint8_create(1);// FIXME array_pool_get();
+        array_uint8_append(item, (unsigned char) code_pos);
 
         ht_add(ht, item, code_pos);
     }
 
+    int numcodes = 256;                   // FIXME: remove when done debugging
+
     for(unsigned char* pos = file_data; pos < file_data + file_len;)
     {
-        array_uint8_t* encoded = array_pool_get();
+        array_uint8_t* encoded = array_uint8_create(1);// FIXME array_pool_get();
         short prev_code = -1;
         unsigned char* prev_pos = pos;
 
@@ -71,10 +71,13 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
 
             short new_code = ht_get2(ht, h);
 
+            assert(new_code < numcodes);
+
             if(new_code == -1)
             {
                 array_uint8_appendm(encoded, prev_pos, pos - prev_pos + 1);
                 ht_add(ht, encoded, code_pos++);
+                numcodes++;
                 break;
             }
 
@@ -95,18 +98,25 @@ array_uint8_t* lz_decode(array_sint16_t* enc_data)
     array_uint8_t* out_bytes = array_uint8_create(enc_data->len * 4);
     array_array_uint8_tp_t* entries = lz_build_initial_dictionary();
 
+    array_uint8_t* entry;
+
     short prev_code = array_sint16_get(enc_data, 0);
-    array_uint8_append(out_bytes, array_uint8_get(array_array_uint8_tp_get(entries, prev_code), 0));
+    array_uint8_t* prev = (array_uint8_t*) array_array_uint8_tp_get(entries, prev_code);
+    array_uint8_append(out_bytes, array_uint8_get(prev, 0));
 
     for(short* data = enc_data->base + 1; data < enc_data->base + enc_data->len; data++)
     {
         assert(*data >= 0);
-        array_uint8_t* prev = (array_uint8_t*) array_array_uint8_tp_get(entries, prev_code);
-        array_uint8_t* entry = (array_uint8_t*) array_array_uint8_tp_get(entries, *data);
+
+        prev = (array_uint8_t*) array_array_uint8_tp_get(entries, prev_code);
 
         if(*data == entries->len)
         {
             entry = prev;
+        }
+        else
+        {
+            entry = (array_uint8_t*) array_array_uint8_tp_get(entries, *data);
         }
 
         array_uint8_t* val = array_uint8_copy(prev);
