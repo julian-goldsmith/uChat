@@ -55,8 +55,6 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
         ht_add(ht, item, code_pos);
     }
 
-    int numcodes = 256;                   // FIXME: remove when done debugging
-
     for(unsigned char* pos = file_data; pos < file_data + file_len;)
     {
         array_uint8_t* encoded = array_uint8_create(1);// FIXME array_pool_get();
@@ -71,13 +69,10 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
 
             short new_code = ht_get2(ht, h);
 
-            assert(new_code < numcodes);
-
             if(new_code == -1)
             {
                 array_uint8_appendm(encoded, prev_pos, pos - prev_pos + 1);
                 ht_add(ht, encoded, code_pos++);
-                numcodes++;
                 break;
             }
 
