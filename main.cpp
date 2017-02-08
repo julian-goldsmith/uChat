@@ -97,11 +97,14 @@ void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsi
         return;
     }
 
-    short num_blocks;
+    short num_blocks = 0;
     compressed_macroblock_t* cblocks = net_deserialize_compressed_blocks(data->encoded_frame, &num_blocks);
-    ic_decode_image(prev_frame, cblocks, num_blocks, data->decoded_frame);
-    memcpy(prev_frame, data->decoded_frame, 3 * 640 * 480);       // FIXME: don't hardcode
-    ic_clean_up_compressed_blocks(cblocks, num_blocks);
+    if(cblocks != NULL)
+    {
+        ic_decode_image(prev_frame, cblocks, num_blocks, data->decoded_frame);
+        memcpy(prev_frame, data->decoded_frame, 3 * 640 * 480);       // FIXME: don't hardcode
+        ic_clean_up_compressed_blocks(cblocks, num_blocks);
+    }
 
     GLint last_texture;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);

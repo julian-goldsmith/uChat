@@ -6,10 +6,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
-
-#ifdef DEBUG
 #include <stdbool.h>
-#endif
 
 // FIXME: remove from_pointer when not debugging
 // FIXME: allow arrays to be created on stack
