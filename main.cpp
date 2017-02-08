@@ -252,8 +252,6 @@ int main(int argc, char** argv)
     SDL_SetMainReady();
     SDL_Init(SDL_INIT_VIDEO);
 
-    printf("PATH %s\n", getenv("PATH"));
-
     GLuint rawinput_id;
     GLuint decoded_id;
     GLuint rmsView_id;
@@ -288,7 +286,9 @@ int main(int argc, char** argv)
         {
             ImGui_ImplSdlGL3_ProcessEvent(&event);
             if (event.type == SDL_QUIT)
+            {
                 done = true;
+            }
         }
 
         if(pthread_mutex_trylock(&sync_mutex) == 0)
@@ -304,12 +304,6 @@ int main(int argc, char** argv)
         finish_frame(window);
     }
 
-    // Cleanup
-    ImGui_ImplSdlGL3_Shutdown();
-    SDL_GL_DeleteContext(glcontext);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-
     pthread_mutex_lock(&sync_mutex);
     int err = pthread_cancel(thread);
     if(err)
@@ -323,6 +317,12 @@ int main(int argc, char** argv)
     {
         printf("Unable to cancel mutex: %i\n", err);
     }
+
+    // Cleanup
+    ImGui_ImplSdlGL3_Shutdown();
+    SDL_GL_DeleteContext(glcontext);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 
     return 0;
 }

@@ -40,7 +40,7 @@ hash_table_t* ht;
 void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_values)
 {
     // leaks solved with Dr. Memory
-    //if(ht == NULL)
+    if(ht == NULL)
     {
         ht = ht_create();
     }
@@ -49,7 +49,7 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
 
     for(code_pos = 0; code_pos < 256; code_pos++)
     {
-        array_uint8_t* item = array_uint8_create(1);// FIXME array_pool_get();
+        array_uint8_t* item = array_pool_get();
         array_uint8_append(item, (unsigned char) code_pos);
 
         ht_add(ht, item, code_pos);
@@ -57,7 +57,7 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
 
     for(unsigned char* pos = file_data; pos < file_data + file_len;)
     {
-        array_uint8_t* encoded = array_uint8_create(1);// FIXME array_pool_get();
+        array_uint8_t* encoded = array_pool_get();
         short prev_code = -1;
         unsigned char* prev_pos = pos;
 
@@ -118,7 +118,6 @@ array_uint8_t* lz_decode(array_sint16_t* enc_data)
         array_uint8_append(val, array_uint8_get(entry, 0));
 
         array_array_uint8_tp_append(entries, val);
-        // FIXME: leak
 
         array_uint8_t* out_entry = (array_uint8_t*) array_array_uint8_tp_get(entries, *data);
         array_uint8_append_array(out_bytes, out_entry);

@@ -19,9 +19,13 @@ short* bwt_decode(short* inarr, int inpos);
 
 unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize, short numBlocks)
 {
+    packet_header_t header;
     const compressed_macroblock_t* cblock;
-    unsigned char* buffer = (unsigned char*) malloc(numBlocks * (2 + 2 + sizeof(cblock->yout) + sizeof(cblock->uout) + sizeof(cblock->vout)));
     int pos = 0;
+    unsigned char* buffer =
+        (unsigned char*) calloc(
+            numBlocks,
+            (2 + 2 + sizeof(cblock->yout) + sizeof(cblock->uout) + sizeof(cblock->vout)));
 
     for(cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
     {
@@ -41,26 +45,28 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
         pos += sizeof(cblock->vout);
     }
 
-    packet_header_t header;
-
-    header.magic = 0x1234;
-
     array_sint16_t* lz_enc_data = array_sint16_create(1024);
     lz_encode(buffer, pos, lz_enc_data);
+
+    free(buffer);
 
     array_uint8_t* huff_enc_data = huffman_encode((const unsigned char*) lz_enc_data->base,
                                                   lz_enc_data->len * 2,
                                                   header.frequencies,
                                                   &header.bit_len);
 
+    array_sint16_free(lz_enc_data);
+
+    header.magic = 0x1234;
     header.compressed_len = huff_enc_data->len;
     header.num_blocks = numBlocks;
+    *totalSize = sizeof(packet_header_t) + huff_enc_data->len;
 
-    unsigned char* retval = (unsigned char*) malloc(sizeof(packet_header_t) + huff_enc_data->len);
+    unsigned char* retval = (unsigned char*) malloc(*totalSize);
     memcpy(retval, &header, sizeof(packet_header_t));
     memcpy(retval + sizeof(packet_header_t), huff_enc_data->base, huff_enc_data->len);
 
-    *totalSize = sizeof(packet_header_t) + huff_enc_data->len;
+    array_uint8_free(huff_enc_data);
 
     return retval;
 }
@@ -79,7 +85,10 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
 
     array_uint8_t* lz_dec_data = lz_decode(huff_dec_converted16);
 
-    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(sizeof(compressed_macroblock_t) * header->num_blocks);
+    free(huff_dec_converted16);
+    array_uint8_free(huff_dec_data);
+
+    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) calloc(header->num_blocks, sizeof(compressed_macroblock_t));
 
     const unsigned char* bp = lz_dec_data->base;
 
@@ -102,9 +111,6 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
     }
 
     *numBlocks = header->num_blocks;
-
-    //free(unhuff);
-    //array_uint8_free(arr);
 
     return cblocks;
 }
