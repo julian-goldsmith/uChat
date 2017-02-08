@@ -20,7 +20,7 @@ short* bwt_decode(short* inarr, int inpos);
 unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize, short numBlocks)
 {
     const compressed_macroblock_t* cblock;
-    unsigned char* buffer = (unsigned char*) malloc(numBlocks * (2 + sizeof(cblock->yout) + sizeof(cblock->uout) + sizeof(cblock->vout)));
+    unsigned char* buffer = (unsigned char*) malloc(numBlocks * (2 + 2 + sizeof(cblock->yout) + sizeof(cblock->uout) + sizeof(cblock->vout)));
     int pos = 0;
 
     for(cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
