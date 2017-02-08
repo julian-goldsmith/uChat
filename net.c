@@ -25,6 +25,9 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
 
     for(cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
     {
+        *(short*)(buffer + pos) = cblock->magic;
+        pos += 2;
+
         *(buffer + pos++) = cblock->mb_x;
         *(buffer + pos++) = cblock->mb_y;
 
@@ -51,6 +54,7 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
                                                   &header.bit_len);
 
     header.compressed_len = huff_enc_data->len;
+    header.num_blocks = numBlocks;
 
     unsigned char* retval = (unsigned char*) malloc(sizeof(packet_header_t) + huff_enc_data->len);
     memcpy(retval, &header, sizeof(packet_header_t));
@@ -64,8 +68,6 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
 compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, short* numBlocks)
 {
     packet_header_t* header = (packet_header_t*) data;
-
-    //if(header->magic != 0x1234) return NULL;
 
     assert(header->magic == 0x1234);
 
@@ -83,6 +85,9 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
 
     for(compressed_macroblock_t* cblock = cblocks; cblock < cblocks + header->num_blocks; cblock++)
     {
+        cblock->magic = *(short*) bp;
+        bp += 2;
+
         cblock->mb_x = *bp++;
         cblock->mb_y = *bp++;
 
@@ -95,6 +100,8 @@ compressed_macroblock_t* net_deserialize_compressed_blocks(unsigned char* data, 
         memcpy(cblock->vout, bp, sizeof(cblock->vout));
         bp += sizeof(cblock->vout);
     }
+
+    *numBlocks = header->num_blocks;
 
     //free(unhuff);
     //array_uint8_free(arr);
