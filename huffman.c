@@ -50,7 +50,17 @@ int huffman_freq_sort(const void* val1, const void* val2)
         return 0;
 }
 
-node_t* buildInternalNode(node_t* left, node_t* right, array_node_tp_t* all_nodes)
+void huffman_free_all_nodes(array_node_tp_t* all_nodes)
+{
+    for(node_t** node = all_nodes->base; node < all_nodes->base + all_nodes->len; node++)
+    {
+        free(*node);
+    }
+
+    array_node_tp_free(all_nodes);
+}
+
+node_t* huffman_build_internal_node(node_t* left, node_t* right, array_node_tp_t* all_nodes)
 {
     node_t* node = (node_t*) malloc(sizeof(node_t));
     node->count = left->count + right->count;
@@ -82,18 +92,18 @@ node_t* huffman_build_tree(frequency_t freqs[256], array_node_tp_t* all_nodes)
     while(listLen > 1)
     {
         qsort(list, listLen, sizeof(node_t*), huffman_freq_sort);
-        list[0] = buildInternalNode(list[0], list[1], all_nodes);
+        list[0] = huffman_build_internal_node(list[0], list[1], all_nodes);
         list[1] = list[listLen - 1];
         listLen--;
     }
 
-    node_t* retval = list[0];
-
-    return retval;
+    return list[0];
 }
 
-void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_state_tp_t* history)
+void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_state_tp_t* history, state_t* all_states)
 {
+    int state_pos = 0;
+
     state_t* initial_state = (state_t*) malloc(sizeof(state_t));
     initial_state->state = ST_RIGHT;
     initial_state->node = root;
@@ -101,7 +111,6 @@ void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_stat
 
     while(true)
     {
-        // put our state in a local variable, so it's not overwritten
         state_t* curr_state = array_state_tp_get(history, history->len - 1);
 
         if(curr_state->state == ST_RIGHT || curr_state->state == ST_LEFT)
@@ -119,7 +128,7 @@ void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_stat
             }
             else if(!next_node->is_leaf && next_node->count >= count)
             {
-                state_t* next_state = (state_t*) malloc(sizeof(state_t));//array_state_tp_get_new(history);
+                state_t* next_state = all_states + (state_pos++);
                 next_state->state = ST_RIGHT;
                 next_state->node = next_node;
                 array_state_tp_append(history, next_state);
@@ -127,7 +136,7 @@ void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_stat
         }
         else
         {
-            free(curr_state);
+            state_pos--;
 
             array_state_tp_pop(history);
         }
@@ -166,24 +175,16 @@ array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned s
 
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        huffman_encode_byte(root, *item, freqs[*item].count, history);
+        state_t all_states[32];
+        huffman_encode_byte(root, *item, freqs[*item].count, history, all_states);
         huffman_flatten_history(history, encoded_stream);
 
-        for(int i = 0; i < history->len; i++)
-        {
-            free(history->base[i]);
-        }
         array_state_tp_clear(history);
     }
 
     array_state_tp_free(history);
 
-    for(node_t** node = all_nodes->base; node < all_nodes->base + all_nodes->len; node++)
-    {
-        free(*node);
-    }
-
-    array_node_tp_free(all_nodes);
+    huffman_free_all_nodes(all_nodes);
 
     bitstream_array_adjust(encoded_stream);
 
@@ -248,12 +249,7 @@ array_uint8_t* huffman_decode(unsigned char* data, int datalen, const unsigned s
     free(bs->array);
     free(bs);
 
-    for(node_t** node = all_nodes->base; node < all_nodes->base + all_nodes->len; node++)
-    {
-        free(*node);
-    }
-
-    array_node_tp_free(all_nodes);
+    huffman_free_all_nodes(all_nodes);
 
     return out_array;
 }
