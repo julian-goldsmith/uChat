@@ -16,9 +16,6 @@ typedef struct node_s
     unsigned char val;
 } node_t;
 
-array_define_type(node_tp, node_t*)
-array_implement_type(node_tp, node_t*)
-
 typedef struct
 {
     unsigned short count;       // more than 256 blocks could theoretically be a problem
@@ -50,49 +47,37 @@ int huffman_freq_sort(const void* val1, const void* val2)
         return 0;
 }
 
-void huffman_free_all_nodes(array_node_tp_t* all_nodes)
+node_t* huffman_build_internal_node(node_t* left, node_t* right, node_t* all_nodes, int* all_nodes_pos)
 {
-    for(node_t** node = all_nodes->base; node < all_nodes->base + all_nodes->len; node++)
-    {
-        free(*node);
-    }
-
-    array_node_tp_free(all_nodes);
-}
-
-node_t* huffman_build_internal_node(node_t* left, node_t* right, array_node_tp_t* all_nodes)
-{
-    node_t* node = (node_t*) malloc(sizeof(node_t));
+    node_t* node = all_nodes + ((*all_nodes_pos)++);
     node->count = left->count + right->count;
     node->is_leaf = false;
     node->left = left;
     node->right = right;
     node->val = 0;
-    array_node_tp_append(all_nodes, node);
 
     return node;
 }
 
-node_t* huffman_build_tree(frequency_t freqs[256], array_node_tp_t* all_nodes)
+node_t* huffman_build_tree(frequency_t freqs[256], node_t* all_nodes, int* all_nodes_pos)
 {
     int listLen = 256;
     node_t* list[256];
 
     for(int i = 0; i < 256; i++)
     {
-        list[i] = (node_t*) malloc(sizeof(node_t));
+        list[i] = all_nodes + ((*all_nodes_pos)++);
         list[i]->val = freqs[i].val;
         list[i]->count = freqs[i].count;
         list[i]->is_leaf = true;
         list[i]->left = NULL;
         list[i]->right = NULL;
-        array_node_tp_append(all_nodes, list[i]);
     }
 
     while(listLen > 1)
     {
         qsort(list, listLen, sizeof(node_t*), huffman_freq_sort);
-        list[0] = huffman_build_internal_node(list[0], list[1], all_nodes);
+        list[0] = huffman_build_internal_node(list[0], list[1], all_nodes, all_nodes_pos);
         list[1] = list[listLen - 1];
         listLen--;
     }
@@ -100,18 +85,18 @@ node_t* huffman_build_tree(frequency_t freqs[256], array_node_tp_t* all_nodes)
     return list[0];
 }
 
-void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_state_tp_t* history, state_t* all_states)
+void huffman_encode_byte(node_t* root, unsigned char byte, int count, state_t* history[32], int* history_pos, state_t all_states[32])
 {
     int state_pos = 0;
 
-    state_t* initial_state = (state_t*) malloc(sizeof(state_t));
+    state_t* initial_state = all_states + (state_pos++);
     initial_state->state = ST_RIGHT;
     initial_state->node = root;
-    array_state_tp_append(history, initial_state);
+    history[(*history_pos)++] = initial_state;
 
     while(true)
     {
-        state_t* curr_state = array_state_tp_get(history, history->len - 1);
+        state_t* curr_state = history[(*history_pos) - 1];
 
         if(curr_state->state == ST_RIGHT || curr_state->state == ST_LEFT)
         {
@@ -131,31 +116,30 @@ void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_stat
                 state_t* next_state = all_states + (state_pos++);
                 next_state->state = ST_RIGHT;
                 next_state->node = next_node;
-                array_state_tp_append(history, next_state);
+                history[(*history_pos)++] = next_state;
             }
         }
         else
         {
             state_pos--;
-
-            array_state_tp_pop(history);
+            (*history_pos)--;
         }
     }
 }
 
-void huffman_flatten_history(array_state_tp_t* history, bitstream_t* bs)
+void huffman_flatten_history(state_t* history[32], int history_pos, bitstream_t* bs)
 {
-    for(int i = 0; i < history->len; i++)
+    for(state_t** state = history; state < history + history_pos; state++)
     {
-        state_t* state = (state_t*) array_state_tp_get(history, i);
-        bitstream_append(bs, state->state == ST_LEFT);
+        bitstream_append(bs, (*state)->state == ST_LEFT);
     }
 }
 
 array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned short frequencies[256], unsigned int* bit_len)
 {
     frequency_t freqs[256];
-    array_node_tp_t* all_nodes = array_node_tp_create(512);
+    node_t all_nodes[512];
+    int all_nodes_pos = 0;
 
     for(unsigned int s = 0; s < 256; s++)
     {
@@ -168,7 +152,7 @@ array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned s
         freqs[*item].count++;
     }
 
-    node_t* root = huffman_build_tree(freqs, all_nodes);
+    node_t* root = huffman_build_tree(freqs, all_nodes, &all_nodes_pos);
 
     bitstream_t* encoded_stream = bitstream_create();
     array_state_tp_t* history = array_state_tp_create(8);
@@ -176,15 +160,14 @@ array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned s
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
         state_t all_states[32];
-        huffman_encode_byte(root, *item, freqs[*item].count, history, all_states);
-        huffman_flatten_history(history, encoded_stream);
+        state_t* history[32];
+        int history_pos = 0;
 
-        array_state_tp_clear(history);
+        huffman_encode_byte(root, *item, freqs[*item].count, history, &history_pos, all_states);
+        huffman_flatten_history(history, history_pos, encoded_stream);
     }
 
     array_state_tp_free(history);
-
-    huffman_free_all_nodes(all_nodes);
 
     bitstream_array_adjust(encoded_stream);
 
@@ -206,7 +189,8 @@ array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned s
 array_uint8_t* huffman_decode(unsigned char* data, int datalen, const unsigned short frequencies[256], unsigned int bit_len)
 {
     frequency_t freqs[256];
-    array_node_tp_t* all_nodes = array_node_tp_create(512);
+    node_t all_nodes[512];
+    int all_nodes_pos = 0;
 
     for(int i = 0; i < 256; i++)
     {
@@ -214,7 +198,7 @@ array_uint8_t* huffman_decode(unsigned char* data, int datalen, const unsigned s
         freqs[i].count = frequencies[i];
     }
 
-    node_t* root = huffman_build_tree(freqs, all_nodes);
+    node_t* root = huffman_build_tree(freqs, all_nodes, &all_nodes_pos);
 
     int spos = 0;
 
@@ -222,13 +206,13 @@ array_uint8_t* huffman_decode(unsigned char* data, int datalen, const unsigned s
 
     array_uint8_t* out_array = array_uint8_create(bit_len / 8 + 1);
 
-    bitstream_t* bs = (bitstream_t*) malloc(sizeof(bitstream_t));
-    bs->array = array_uint8_create_from_pointer(data, datalen);
-    bs->pos = 0;
+    bitstream_t bs;
+    bs.array = array_uint8_create_from_pointer(data, datalen);
+    bs.pos = 0;
 
     while(spos < bit_len)
     {
-        if(bitstream_read(bs))
+        if(bitstream_read(&bs))
         {
             new_root = new_root->right;
         }
@@ -246,10 +230,7 @@ array_uint8_t* huffman_decode(unsigned char* data, int datalen, const unsigned s
         spos++;
     }
 
-    free(bs->array);
-    free(bs);
-
-    huffman_free_all_nodes(all_nodes);
+    free(bs.array);
 
     return out_array;
 }
