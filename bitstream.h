@@ -13,7 +13,7 @@ typedef struct
 
 inline bitstream_t* bitstream_create()
 {
-    bitstream_t* bs = (bitstream_t*) calloc(1, sizeof(bitstream_t));
+    bitstream_t* bs = (bitstream_t*) malloc(sizeof(bitstream_t));
     bs->array = array_uint8_create(4);
     bs->pos = 0;
     return bs;

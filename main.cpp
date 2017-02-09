@@ -36,6 +36,87 @@ typedef struct
 } frame_data_t;
 
 pthread_mutex_t sync_mutex;
+bool should_exit;
+
+void* run_frame(void* param)
+{
+    frame_data_t* data = (frame_data_t*) param;
+
+    videoInput vi;
+
+    vi.setupDevice(0, 640, 480);
+
+    data->raw_frame = (unsigned char*) malloc(vi.getSize(0));
+    data->rms_view = (unsigned char*) malloc(vi.getSize(0));
+
+    unsigned char* decoded_frame = (unsigned char*) malloc(vi.getSize(0));
+    unsigned char* encoded_frame = NULL;
+    unsigned char* raw_frame = (unsigned char*) malloc(vi.getSize(0));
+    unsigned char* rms_view = (unsigned char*) malloc(vi.getSize(0));
+    int total_size = 0;
+    int num_frames = 0;
+    int last_encode_time = 0;
+    float avg_size = 0;
+    float avg_encode_time = 0;
+
+    while(!should_exit)
+    {
+        int loopStart = SDL_GetTicks();
+        if(vi.isFrameNew(0))
+        {
+            pthread_mutex_lock(&sync_mutex);
+            memcpy(decoded_frame, data->decoded_frame, vi.getSize(0));
+            pthread_mutex_unlock(&sync_mutex);
+
+            vi.getPixels(0, raw_frame, true, true);
+
+            int encodeTimeTemp = SDL_GetTicks();
+
+            short num_blocks;
+            compressed_macroblock_t* cblocks = ic_encode_image(raw_frame, decoded_frame, rms_view, &num_blocks);
+            encoded_frame = net_serialize_compressed_blocks(cblocks, &total_size, num_blocks);
+            ic_clean_up_compressed_blocks(cblocks, num_blocks);
+
+            // update stats
+            last_encode_time = SDL_GetTicks() - encodeTimeTemp;
+            avg_size = (avg_size * num_frames + total_size) / (num_frames + 1);
+            avg_encode_time = (avg_encode_time * num_frames + last_encode_time) / (num_frames + 1);
+            num_frames++;
+
+            pthread_mutex_lock(&sync_mutex);
+
+            memcpy(data->raw_frame, raw_frame, vi.getSize(0));
+            memcpy(data->rms_view, rms_view, vi.getSize(0));
+
+            if(data->encoded_frame != NULL)
+            {
+                free(data->encoded_frame);
+            }
+
+            data->encoded_frame = encoded_frame;
+
+            data->total_size = total_size;
+            data->num_frames = num_frames;
+            data->last_encode_time = last_encode_time;
+            data->avg_size = avg_size;
+            data->avg_encode_time = avg_encode_time;
+
+            pthread_mutex_unlock(&sync_mutex);
+        }
+
+        int loopLen = SDL_GetTicks() - loopStart;
+
+        if(loopLen < 34)
+        {
+            // updates every 34ms ~= 30FPS
+            SDL_Delay(34 - loopLen);
+        }
+    }
+
+    pthread_exit(NULL);
+
+    return NULL;
+}
 
 SDL_Window* init_ui(SDL_GLContext* glcontext, GLuint* rawinput_id, GLuint* decoded_id, GLuint* rmsView_id)
 {
@@ -81,6 +162,8 @@ SDL_Window* init_ui(SDL_GLContext* glcontext, GLuint* rawinput_id, GLuint* decod
     glBindTexture(GL_TEXTURE_2D, *rmsView_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, blank);
+
+    free(blank);
 
     return window;
 }
@@ -164,93 +247,12 @@ void finish_frame(SDL_Window* window)
     SDL_GL_SwapWindow(window);
 }
 
-void* run_frame(void* param)
-{
-    frame_data_t* data = (frame_data_t*) param;
-
-    videoInput vi;
-
-    vi.setupDevice(0, 640, 480);
-
-    data->raw_frame = (unsigned char*) malloc(vi.getSize(0));
-    data->rms_view = (unsigned char*) malloc(vi.getSize(0));
-
-    unsigned char* decoded_frame = (unsigned char*) malloc(vi.getSize(0));
-    unsigned char* encoded_frame = NULL;
-    unsigned char* raw_frame = (unsigned char*) malloc(vi.getSize(0));
-    unsigned char* rms_view = (unsigned char*) malloc(vi.getSize(0));
-    int total_size = 0;
-    int num_frames = 0;
-    int last_encode_time = 0;
-    float avg_size = 0;
-    float avg_encode_time = 0;
-
-    while(true)
-    {
-        int loopStart = SDL_GetTicks();
-        if(vi.isFrameNew(0))
-        {
-            pthread_mutex_lock(&sync_mutex);
-            memcpy(decoded_frame, data->decoded_frame, vi.getSize(0));
-            pthread_mutex_unlock(&sync_mutex);
-
-            vi.getPixels(0, raw_frame, true, true);
-
-            int encodeTimeTemp = SDL_GetTicks();
-
-            short num_blocks;
-            compressed_macroblock_t* cblocks = ic_encode_image(raw_frame, decoded_frame, rms_view, &num_blocks);
-            encoded_frame = net_serialize_compressed_blocks(cblocks, &total_size, num_blocks);
-            ic_clean_up_compressed_blocks(cblocks, num_blocks);
-
-            // update stats
-            last_encode_time = SDL_GetTicks() - encodeTimeTemp;
-            avg_size = (avg_size * num_frames + total_size) / (num_frames + 1);
-            avg_encode_time = (avg_encode_time * num_frames + last_encode_time) / (num_frames + 1);
-            num_frames++;
-
-            pthread_mutex_lock(&sync_mutex);
-
-            memcpy(data->raw_frame, raw_frame, vi.getSize(0));
-            memcpy(data->rms_view, rms_view, vi.getSize(0));
-
-            if(data->encoded_frame != NULL)
-            {
-                free(data->encoded_frame);
-            }
-
-            data->encoded_frame = (unsigned char*) malloc(total_size);
-            memcpy(data->encoded_frame, encoded_frame, total_size);
-
-            data->total_size = total_size;
-            data->num_frames = num_frames;
-            data->last_encode_time = last_encode_time;
-            data->avg_size = avg_size;
-            data->avg_encode_time = avg_encode_time;
-
-            pthread_mutex_unlock(&sync_mutex);
-
-            free(encoded_frame);
-        }
-
-        int loopLen = SDL_GetTicks() - loopStart;
-
-        if(loopLen < 34)
-        {
-            // updates every 34ms ~= 30FPS
-            SDL_Delay(34 - loopLen);
-        }
-    }
-
-    pthread_exit(NULL);
-
-    return NULL;
-}
-
 int main(int argc, char** argv)
 {
     SDL_SetMainReady();
     SDL_Init(SDL_INIT_VIDEO);
+
+    should_exit = false;
 
     GLuint rawinput_id;
     GLuint decoded_id;
@@ -304,13 +306,13 @@ int main(int argc, char** argv)
         finish_frame(window);
     }
 
-    pthread_mutex_lock(&sync_mutex);
-    int err = pthread_cancel(thread);
+    should_exit = true;
+
+    int err = pthread_join(thread, NULL);
     if(err)
     {
-        printf("Unable to cancel thread: %i\n", err);
+        printf("Unable to join thread: %i\n", err);
     }
-    pthread_mutex_unlock(&sync_mutex);
 
     err = pthread_mutex_destroy(&sync_mutex);
     if(err)

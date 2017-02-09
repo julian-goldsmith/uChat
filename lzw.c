@@ -39,7 +39,6 @@ hash_table_t* ht;
 
 void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_values)
 {
-    // leaks solved with Dr. Memory
     if(ht == NULL)
     {
         ht = ht_create();
@@ -59,7 +58,6 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
     {
         array_uint8_t* encoded = array_pool_get();
         short prev_code = -1;
-        unsigned char* prev_pos = pos;
 
         uint64_t h = 0xcbf29ce484222325;
 
@@ -69,9 +67,10 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
 
             short new_code = ht_get2(ht, h);
 
+            array_uint8_append(encoded, *pos);
+
             if(new_code == -1)
             {
-                array_uint8_appendm(encoded, prev_pos, pos - prev_pos + 1);
                 ht_add(ht, encoded, code_pos++);
                 break;
             }
@@ -89,14 +88,13 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
 
 array_uint8_t* lz_decode(array_sint16_t* enc_data)
 {
-    // leaks solved with Dr. Memory
     array_uint8_t* out_bytes = array_uint8_create(enc_data->len * 4);
     array_array_uint8_tp_t* entries = lz_build_initial_dictionary();
 
     array_uint8_t* entry;
 
     short prev_code = array_sint16_get(enc_data, 0);
-    array_uint8_t* prev = (array_uint8_t*) array_array_uint8_tp_get(entries, prev_code);
+    array_uint8_t* prev = array_array_uint8_tp_get(entries, prev_code);
     array_uint8_append(out_bytes, array_uint8_get(prev, 0));
 
     for(short* data = enc_data->base + 1; data < enc_data->base + enc_data->len; data++)
@@ -119,8 +117,9 @@ array_uint8_t* lz_decode(array_sint16_t* enc_data)
 
         array_array_uint8_tp_append(entries, val);
 
-        array_uint8_t* out_entry = (array_uint8_t*) array_array_uint8_tp_get(entries, *data);
+        array_uint8_t* out_entry = array_array_uint8_tp_get(entries, *data);
         array_uint8_append_array(out_bytes, out_entry);
+
         prev_code = *data;
     }
 

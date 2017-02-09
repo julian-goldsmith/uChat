@@ -212,7 +212,7 @@ compressed_macroblock_t* ic_encode_image(const unsigned char* imgIn, const unsig
     *num_blocks = ic_get_num_blocks(blocks);
     ic_show_rms(blocks, rmsView, *num_blocks);
 
-    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) calloc(*num_blocks, sizeof(compressed_macroblock_t));
+    compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(*num_blocks * sizeof(compressed_macroblock_t));
     ic_compress_blocks(blocks, *num_blocks, cblocks);
 
     free(blocks);

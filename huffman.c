@@ -52,7 +52,7 @@ int huffman_freq_sort(const void* val1, const void* val2)
 
 node_t* buildInternalNode(node_t* left, node_t* right, array_node_tp_t* all_nodes)
 {
-    node_t* node = (node_t*) calloc(1, sizeof(node_t));//array_node_tp_get_new(all_nodes); // FIXME: leaks
+    node_t* node = (node_t*) malloc(sizeof(node_t));
     node->count = left->count + right->count;
     node->is_leaf = false;
     node->left = left;
@@ -70,7 +70,7 @@ node_t* huffman_build_tree(frequency_t freqs[256], array_node_tp_t* all_nodes)
 
     for(int i = 0; i < 256; i++)
     {
-        list[i] = (node_t*) calloc(1, sizeof(node_t));//array_node_tp_get_new(all_nodes);
+        list[i] = (node_t*) malloc(sizeof(node_t));
         list[i]->val = freqs[i].val;
         list[i]->count = freqs[i].count;
         list[i]->is_leaf = true;
@@ -94,7 +94,7 @@ node_t* huffman_build_tree(frequency_t freqs[256], array_node_tp_t* all_nodes)
 
 void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_state_tp_t* history)
 {
-    state_t* initial_state = (state_t*) calloc(1, sizeof(state_t));//array_state_tp_get_new(history);
+    state_t* initial_state = (state_t*) malloc(sizeof(state_t));
     initial_state->state = ST_RIGHT;
     initial_state->node = root;
     array_state_tp_append(history, initial_state);
@@ -119,7 +119,7 @@ void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_stat
             }
             else if(!next_node->is_leaf && next_node->count >= count)
             {
-                state_t* next_state = (state_t*) calloc(1, sizeof(state_t));//array_state_tp_get_new(history);
+                state_t* next_state = (state_t*) malloc(sizeof(state_t));//array_state_tp_get_new(history);
                 next_state->state = ST_RIGHT;
                 next_state->node = next_node;
                 array_state_tp_append(history, next_state);
@@ -127,6 +127,8 @@ void huffman_encode_byte(node_t* root, unsigned char byte, int count, array_stat
         }
         else
         {
+            free(curr_state);
+
             array_state_tp_pop(history);
         }
     }
@@ -164,13 +166,23 @@ array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned s
 
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        array_state_tp_clear(history);
-
         huffman_encode_byte(root, *item, freqs[*item].count, history);
         huffman_flatten_history(history, encoded_stream);
+
+        for(int i = 0; i < history->len; i++)
+        {
+            free(history->base[i]);
+        }
+        array_state_tp_clear(history);
     }
 
     array_state_tp_free(history);
+
+    for(node_t** node = all_nodes->base; node < all_nodes->base + all_nodes->len; node++)
+    {
+        free(*node);
+    }
+
     array_node_tp_free(all_nodes);
 
     bitstream_array_adjust(encoded_stream);
@@ -231,6 +243,14 @@ array_uint8_t* huffman_decode(unsigned char* data, int datalen, const unsigned s
         }
 
         spos++;
+    }
+
+    free(bs->array);
+    free(bs);
+
+    for(node_t** node = all_nodes->base; node < all_nodes->base + all_nodes->len; node++)
+    {
+        free(*node);
     }
 
     array_node_tp_free(all_nodes);
