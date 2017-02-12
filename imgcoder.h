@@ -13,7 +13,7 @@ typedef struct
     unsigned char blockData[MB_SIZE][MB_SIZE][3];
 } macroblock_t;
 
-typedef struct
+typedef struct __attribute__((__packed__))
 {
     short magic;
     unsigned char mb_x;

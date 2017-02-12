@@ -37,8 +37,10 @@ void lz_entries_clean_up(array_array_uint8_tp_t* entries)
 
 hash_table_t* ht;
 
-void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_values)
+array_sint16_t* lz_encode(const unsigned char* file_data, int file_len)
 {
+    array_sint16_t* out_values = array_sint16_create(1024);
+
     if(ht == NULL)
     {
         ht = ht_create();
@@ -54,7 +56,7 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
         ht_add(ht, item, code_pos);
     }
 
-    for(unsigned char* pos = file_data; pos < file_data + file_len;)
+    for(const unsigned char* pos = file_data; pos < file_data + file_len;)
     {
         array_uint8_t* encoded = array_pool_get();
         short prev_code = -1;
@@ -84,14 +86,15 @@ void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_value
 
     ht_clear(ht);
     array_pool_release_all();
+
+    return out_values;
 }
 
 array_uint8_t* lz_decode(array_sint16_t* enc_data)
 {
+    array_uint8_t* entry;
     array_uint8_t* out_bytes = array_uint8_create(enc_data->len * 4);
     array_array_uint8_tp_t* entries = lz_build_initial_dictionary();
-
-    array_uint8_t* entry;
 
     short prev_code = array_sint16_get(enc_data, 0);
     array_uint8_t* prev = array_array_uint8_tp_get(entries, prev_code);

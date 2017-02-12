@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void lz_encode(unsigned char* file_data, int file_len, array_sint16_t* out_values);
+array_sint16_t* lz_encode(const unsigned char* file_data, int file_len);
 array_uint8_t* lz_decode(array_sint16_t* enc_data);
 
 #ifdef __cplusplus
