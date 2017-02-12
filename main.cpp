@@ -193,16 +193,13 @@ void update_views(GLuint rawinput_id, GLuint decoded_id, GLuint rmsView_id, unsi
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
 
     glBindTexture(GL_TEXTURE_2D, rawinput_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, data->raw_frame);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGB, GL_UNSIGNED_BYTE, data->raw_frame);
 
     glBindTexture(GL_TEXTURE_2D, decoded_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, data->decoded_frame);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGB, GL_UNSIGNED_BYTE, data->decoded_frame);
 
     glBindTexture(GL_TEXTURE_2D, rmsView_id);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 640, 480, 0, GL_RGB, GL_UNSIGNED_BYTE, data->rms_view);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGB, GL_UNSIGNED_BYTE, data->rms_view);
 
     glBindTexture(GL_TEXTURE_2D, last_texture);
 }

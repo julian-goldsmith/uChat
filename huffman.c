@@ -1,4 +1,3 @@
-#include <malloc.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <memory.h>
@@ -15,12 +14,6 @@ typedef struct node_s
     struct node_s* right;
     unsigned char val;
 } node_t;
-
-typedef struct
-{
-    unsigned short count;       // more than 256 blocks could theoretically be a problem
-    unsigned char val;
-} __attribute__((packed)) frequency_t;
 
 // keeps track of where we are
 typedef enum {ST_RIGHT, ST_LEFT, ST_DONE} statew_t;
@@ -47,9 +40,9 @@ int huffman_freq_sort(const void* val1, const void* val2)
         return 0;
 }
 
-node_t* huffman_build_internal_node(node_t* left, node_t* right, node_t* all_nodes, int* all_nodes_pos)
+node_t* huffman_build_internal_node(node_t* left, node_t* right, node_t* all_nodes, int all_nodes_pos)
 {
-    node_t* node = all_nodes + ((*all_nodes_pos)++);
+    node_t* node = all_nodes + all_nodes_pos;
     node->count = left->count + right->count;
     node->is_leaf = false;
     node->left = left;
@@ -59,19 +52,21 @@ node_t* huffman_build_internal_node(node_t* left, node_t* right, node_t* all_nod
     return node;
 }
 
-node_t* huffman_build_tree(frequency_t freqs[256], node_t* all_nodes, int* all_nodes_pos)
+node_t* huffman_build_tree(const unsigned short freqs[256], node_t* all_nodes)
 {
     int listLen = 256;
     node_t* list[256];
+    int all_nodes_pos = 0;
 
     for(int i = 0; i < 256; i++)
     {
-        list[i] = all_nodes + ((*all_nodes_pos)++);
-        list[i]->val = freqs[i].val;
-        list[i]->count = freqs[i].count;
+        list[i] = all_nodes + all_nodes_pos;
+        list[i]->val = i;
+        list[i]->count = freqs[i];
         list[i]->is_leaf = true;
         list[i]->left = NULL;
         list[i]->right = NULL;
+        all_nodes_pos++;
     }
 
     while(listLen > 1)
@@ -79,6 +74,7 @@ node_t* huffman_build_tree(frequency_t freqs[256], node_t* all_nodes, int* all_n
         qsort(list, listLen, sizeof(node_t*), huffman_freq_sort);
         list[0] = huffman_build_internal_node(list[0], list[1], all_nodes, all_nodes_pos);
         list[1] = list[listLen - 1];
+        all_nodes_pos++;
         listLen--;
     }
 
@@ -135,49 +131,42 @@ void huffman_flatten_history(state_t* history[32], int history_pos, bitstream_t*
     }
 }
 
-array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned short frequencies[256], unsigned int* bit_len)
+void huffman_tally_frequencies(unsigned short frequencies[256], const unsigned char* data, int datalen)
 {
-    frequency_t freqs[256];
-    node_t all_nodes[512];
-    int all_nodes_pos = 0;
-
     for(unsigned int s = 0; s < 256; s++)
     {
-        freqs[s].val = s;
-        freqs[s].count = 0;
+        frequencies[s] = 0;
     }
 
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        freqs[*item].count++;
+        frequencies[*item]++;
     }
+}
 
-    node_t* root = huffman_build_tree(freqs, all_nodes, &all_nodes_pos);
+array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned short frequencies[256], unsigned int* bit_len)
+{
+    node_t* root;
+    array_uint8_t* out_array;
+    bitstream_t* encoded_stream;
+    node_t all_nodes[512];
 
-    bitstream_t* encoded_stream = bitstream_create();
-    array_state_tp_t* history = array_state_tp_create(8);
+    huffman_tally_frequencies(frequencies, data, datalen);
+    root = huffman_build_tree(frequencies, all_nodes);
+
+    encoded_stream = bitstream_create();
 
     for(const unsigned char* item = data; item < data + datalen; item++)
     {
-        state_t all_states[32];
+        state_t all_states[32];         // pointers in history are to items in all_state, so don't let it go out of scope
         state_t* history[32];
         int history_pos = 0;
 
-        huffman_encode_byte(root, *item, freqs[*item].count, history, &history_pos, all_states);
+        huffman_encode_byte(root, *item, frequencies[*item], history, &history_pos, all_states);
         huffman_flatten_history(history, history_pos, encoded_stream);
     }
 
-    array_state_tp_free(history);
-
-    bitstream_array_adjust(encoded_stream);
-
-    array_uint8_t* out_array = array_uint8_create(encoded_stream->array->len);
-    array_uint8_append_array(out_array, encoded_stream->array);
-
-    for(int i = 0; i < 256; i++)
-    {
-        frequencies[i] = freqs[i].count;
-    }
+    out_array = array_uint8_copy(encoded_stream->array);
 
     *bit_len = encoded_stream->pos;
 
@@ -188,38 +177,24 @@ array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned s
 
 array_uint8_t* huffman_decode(unsigned char* data, int datalen, const unsigned short frequencies[256], unsigned int bit_len)
 {
-    frequency_t freqs[256];
+    node_t* root;
+    node_t* new_root;
+    array_uint8_t* out_array;
+    bitstream_t bs;
     node_t all_nodes[512];
-    int all_nodes_pos = 0;
-
-    for(int i = 0; i < 256; i++)
-    {
-        freqs[i].val = i;
-        freqs[i].count = frequencies[i];
-    }
-
-    node_t* root = huffman_build_tree(freqs, all_nodes, &all_nodes_pos);
-
     int spos = 0;
 
-    node_t* new_root = root;
+    root = huffman_build_tree(frequencies, all_nodes);
+    new_root = root;
 
-    array_uint8_t* out_array = array_uint8_create(bit_len / 8 + 1);
+    out_array = array_uint8_create(bit_len / 8 + 1);
 
-    bitstream_t bs;
     bs.array = array_uint8_create_from_pointer(data, datalen);
     bs.pos = 0;
 
     while(spos < bit_len)
     {
-        if(bitstream_read(&bs))
-        {
-            new_root = new_root->right;
-        }
-        else
-        {
-            new_root = new_root->left;
-        }
+        new_root = bitstream_read(&bs) ? new_root->right : new_root->left;
 
         if(new_root->is_leaf)
         {

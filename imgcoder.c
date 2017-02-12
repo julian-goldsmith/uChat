@@ -204,7 +204,7 @@ short ic_get_num_blocks(const macroblock_t* blocks)
 compressed_macroblock_t* ic_encode_image(const unsigned char* imgIn, const unsigned char* prevFrame,
                                          unsigned char* rmsView, short* num_blocks)
 {
-    macroblock_t* blocks = (macroblock_t*) malloc(MB_NUM_X * MB_NUM_Y * sizeof(macroblock_t));
+    macroblock_t blocks[MB_NUM_X * MB_NUM_Y];
 
     ic_fill_blocks(blocks, imgIn, prevFrame);
     qsort(blocks, MB_NUM_X * MB_NUM_Y, sizeof(macroblock_t), ic_sort_blocks);
@@ -214,8 +214,6 @@ compressed_macroblock_t* ic_encode_image(const unsigned char* imgIn, const unsig
 
     compressed_macroblock_t* cblocks = (compressed_macroblock_t*) malloc(*num_blocks * sizeof(compressed_macroblock_t));
     ic_compress_blocks(blocks, *num_blocks, cblocks);
-
-    free(blocks);
 
     return cblocks;
 }

@@ -22,10 +22,7 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     packet_header_t header;
     const compressed_macroblock_t* cblock;
     int pos = 0;
-    unsigned char* buffer =
-        (unsigned char*) malloc(
-            numBlocks *
-            (2 + 2 + sizeof(cblock->yout) + sizeof(cblock->uout) + sizeof(cblock->vout)));
+    unsigned char buffer[numBlocks * (2 + 2 + sizeof(cblock->yout) + sizeof(cblock->uout) + sizeof(cblock->vout))];
 
     for(cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
     {
@@ -47,8 +44,6 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
 
     array_sint16_t* lz_enc_data = array_sint16_create(1024);
     lz_encode(buffer, pos, lz_enc_data);
-
-    free(buffer);
 
     array_uint8_t* huff_enc_data = huffman_encode((const unsigned char*) lz_enc_data->base,
                                                   lz_enc_data->len * 2,
