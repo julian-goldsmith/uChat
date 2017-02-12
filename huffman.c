@@ -81,18 +81,19 @@ node_t* huffman_build_tree(const unsigned short freqs[256], node_t* all_nodes)
     return list[0];
 }
 
-void huffman_encode_byte(node_t* root, unsigned char byte, int count, state_t* history[32], int* history_pos, state_t all_states[32])
+int huffman_encode_byte(node_t* root, unsigned char byte, int count, state_t* history[32], state_t all_states[32])
 {
     int state_pos = 0;
+    int history_pos = 0;
 
     state_t* initial_state = all_states + (state_pos++);
     initial_state->state = ST_RIGHT;
     initial_state->node = root;
-    history[(*history_pos)++] = initial_state;
+    history[history_pos++] = initial_state;
 
     while(true)
     {
-        state_t* curr_state = history[(*history_pos) - 1];
+        state_t* curr_state = history[history_pos - 1];
 
         if(curr_state->state == ST_RIGHT || curr_state->state == ST_LEFT)
         {
@@ -105,20 +106,21 @@ void huffman_encode_byte(node_t* root, unsigned char byte, int count, state_t* h
             //     otherwise, continue and don't save next state
             if(next_node->is_leaf && next_node->val == byte)
             {
-                return;
+                return history_pos;
             }
             else if(!next_node->is_leaf && next_node->count >= count)
             {
-                state_t* next_state = all_states + (state_pos++);
+                state_t* next_state = all_states + state_pos;
                 next_state->state = ST_RIGHT;
                 next_state->node = next_node;
-                history[(*history_pos)++] = next_state;
+                state_pos++;
+                history[history_pos++] = next_state;
             }
         }
         else
         {
             state_pos--;
-            (*history_pos)--;
+            history_pos--;
         }
     }
 }
@@ -160,9 +162,9 @@ array_uint8_t* huffman_encode(const unsigned char* data, int datalen, unsigned s
     {
         state_t all_states[32];         // pointers in history are to items in all_state, so don't let it go out of scope
         state_t* history[32];
-        int history_pos = 0;
+        int history_pos;
 
-        huffman_encode_byte(root, *item, frequencies[*item], history, &history_pos, all_states);
+        history_pos = huffman_encode_byte(root, *item, frequencies[*item], history, all_states);
         huffman_flatten_history(history, history_pos, encoded_stream);
     }
 
