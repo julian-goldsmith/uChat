@@ -264,9 +264,6 @@ int main(int argc, char** argv)
 
     assert(!memcmp(test, out, 32));
 
-    char c[10];
-    gets(c);
-
     return 0;
 
     SDL_SetMainReady();

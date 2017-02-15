@@ -46,7 +46,6 @@ short* bwt_encode(const short* inarr, unsigned short* posp)
     short* outarr = (short*) calloc(16, sizeof(short));
     short pos = 0;
 
-    // FIXME: not 100% sure this sort is right
     short** rots = bwt_gen_rotations(inarr);       // array of short*s
     qsort(rots, 16, sizeof(short*), bwt_sort_shorts);
 
@@ -71,33 +70,27 @@ short* bwt_encode(const short* inarr, unsigned short* posp)
 
 short* bwt_decode(short outs[16], unsigned short pos)
 {
-    short rots[16][16];
-
-    short* fuck[16];
-    for(int i = 0; i < 16; i++) fuck[i] = rots[i];
-
-    for(int i = 0; i < 16; i++) for(int j = 0; j < 16; j++) rots[i][j] = 0;
+    short storage[16][16];
+    short* rots[16];                // we need short*s, since qsort changes them in-place.  thank you Stragus from Freenode's ##c
 
     for(int i = 0; i < 16; i++)
     {
-        // insert s as a column of table before the first column of the table
+        rots[i] = storage[i];
+    }
+
+    for(int i = 0; i < 16; i++)
+    {
         for(int row = 0; row < 16; row++)
         {
-            short temp[16];
-
-            for(int j = 0; j < 16; j++)
+            for(int j = 14; j >= 0; j--)
             {
-                temp[j] = fuck[row][j];
+                rots[row][j + 1] = rots[row][j];
             }
 
-            fuck[row][0] = outs[row];
-            for(int j = 0; j < 15; j++)
-            {
-                fuck[row][j + 1] = temp[j];
-            }
+            rots[row][0] = outs[row];
         }
 
-        qsort(fuck, 16, sizeof(short*), bwt_sort_shorts);
+        qsort(rots, 16, sizeof(short*), bwt_sort_shorts);
     }
 
     short* outv = (short*) malloc(32);
