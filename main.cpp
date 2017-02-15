@@ -244,8 +244,31 @@ void finish_frame(SDL_Window* window)
     SDL_GL_SwapWindow(window);
 }
 
+#include "bwt.h"
+
 int main(int argc, char** argv)
 {
+    //short test[16];
+    unsigned short posp;
+
+    /*for(int i = 0; i < 16; i++)
+    {
+        test[i] = i;
+    }*/
+
+    short* test = (short*) "qwertyuiopasdfghjklzxcvbnmqwerty";
+
+    short* temp = bwt_encode(test, &posp);
+
+    short* out = bwt_decode(temp, posp);
+
+    assert(!memcmp(test, out, 32));
+
+    char c[10];
+    gets(c);
+
+    return 0;
+
     SDL_SetMainReady();
     SDL_Init(SDL_INIT_VIDEO);
 

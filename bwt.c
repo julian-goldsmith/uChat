@@ -1,18 +1,19 @@
 #include <stdlib.h>
 #include "array.h"
+#include "bwt.h"
 
 short** bwt_gen_rotations(const short* inarr)
 {
     // FIXME: will probably need to do MB_SIZE instead of MB_SIZE*MB_SIZE
-    short** outarr = (short**) calloc(256, sizeof(short*));
-    short* block = (short*) calloc(2 * 256, sizeof(short));
+    short** outarr = (short**) malloc(16 * sizeof(short*));
+    short* block = (short*) malloc(2 * 16 * sizeof(short));
 
-    memcpy(block, inarr, sizeof(short) * 256);
-    memcpy(block + 256, inarr, sizeof(short) * 256);
+    memcpy(block, inarr, sizeof(short) * 16);
+    memcpy(block + 16, inarr, sizeof(short) * 16);
 
-    for(int i = 0; i < 256; i++)
+    for(int i = 0; i < 16; i++)
     {
-        short* tb = block + 256 - i;
+        short* tb = block + 16 - i;
 
         outarr[i] = tb;
     }
@@ -22,35 +23,41 @@ short** bwt_gen_rotations(const short* inarr)
 
 int bwt_sort_shorts(const void* p, const void* q)
 {
-    const short* x = (const short*) p;
-    const short* y = (const short*) q;
+    const short* x = *(const short**) p;
+    const short* y = *(const short**) q;
 
-    int i = 0;
+    for(int i = 0; i < 16; i++)
+    {
+        if(x[i] < y[i])
+        {
+            return -1;
+        }
+        else if(x[i] > y[i])
+        {
+            return 1;
+        }
+    }
 
-    while(*x++ == *y++ && i < 256) i++;
-
-    return *x < *y ? -1 :
-           *x > *y ? 1 :
-           0;
+    return 0;
 }
 
-short* bwt_encode(const short* inarr, int* posp)
+short* bwt_encode(const short* inarr, unsigned short* posp)
 {
-    short* outarr = (short*) calloc(256, sizeof(short));
-    int pos = 0;
+    short* outarr = (short*) calloc(16, sizeof(short));
+    short pos = 0;
 
     // FIXME: not 100% sure this sort is right
     short** rots = bwt_gen_rotations(inarr);       // array of short*s
-    qsort(rots, 256, sizeof(short*), bwt_sort_shorts);
+    qsort(rots, 16, sizeof(short*), bwt_sort_shorts);
 
-    for(int i = 0; i < 256; i++)
+    for(int i = 0; i < 16; i++)
     {
-        outarr[i] = rots[i][255];
+        outarr[i] = rots[i][15];
     }
 
-    for(int i = 0; i < 256; i++)
+    for(int i = 0; i < 16; i++)
     {
-        if(!memcmp(rots[i], inarr, sizeof(short) * 256))   // rots is arr of short*s
+        if(!memcmp(rots[i], inarr, sizeof(short) * 16))   // rots is arr of short*s
         {
             pos = i;
             break;
@@ -62,35 +69,39 @@ short* bwt_encode(const short* inarr, int* posp)
     return outarr;
 }
 
-void shift_rot(short* rot, int q)
+short* bwt_decode(short outs[16], unsigned short pos)
 {
-    for(int i = q; i > 0; i--)
-    {
-        rot[i] = rot[i - 1];
-    }
-}
+    short rots[16][16];
 
-short* bwt_decode(short* inarr, int inpos)
-{
-    short** rots = (short**) calloc(256, sizeof(short*));
-    short* block = (short*) calloc(256 * 256, sizeof(short));
+    short* fuck[16];
+    for(int i = 0; i < 16; i++) fuck[i] = rots[i];
 
-    for(int i = 0; i < 256; i++)
-    {
-        rots[i] = block + 256 * i;
-    }
+    for(int i = 0; i < 16; i++) for(int j = 0; j < 16; j++) rots[i][j] = 0;
 
-    for(int i = 0; i < 256; i++)
+    for(int i = 0; i < 16; i++)
     {
-        for(int j = 0; j < 256; j++)
+        // insert s as a column of table before the first column of the table
+        for(int row = 0; row < 16; row++)
         {
-            short* rot = rots[j];
-            shift_rot(rot, i);
-            rot[0] = inarr[j];                                  // inarr is an array of shorts
+            short temp[16];
+
+            for(int j = 0; j < 16; j++)
+            {
+                temp[j] = fuck[row][j];
+            }
+
+            fuck[row][0] = outs[row];
+            for(int j = 0; j < 15; j++)
+            {
+                fuck[row][j + 1] = temp[j];
+            }
         }
 
-        qsort(rots, 256, sizeof(short*), bwt_sort_shorts);
+        qsort(fuck, 16, sizeof(short*), bwt_sort_shorts);
     }
 
-    return rots[inpos];     // FIXME: leak
+    short* outv = (short*) malloc(32);
+    memcpy(outv, rots[pos], 32);
+
+    return outv;
 }
