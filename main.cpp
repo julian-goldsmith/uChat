@@ -77,6 +77,8 @@ void* run_frame(void* param)
             encoded_frame = net_serialize_compressed_blocks(cblocks, &total_size, num_blocks);
             ic_clean_up_compressed_blocks(cblocks, num_blocks);
 
+            printf("%i\n", total_size / 1024);
+
             // update stats
             last_encode_time = SDL_GetTicks() - encodeTimeTemp;
             avg_size = (avg_size * num_frames + total_size) / (num_frames + 1);
@@ -248,24 +250,6 @@ void finish_frame(SDL_Window* window)
 
 int main(int argc, char** argv)
 {
-    //short test[16];
-    unsigned short posp;
-
-    /*for(int i = 0; i < 16; i++)
-    {
-        test[i] = i;
-    }*/
-
-    short* test = (short*) "qwertyuiopasdfghjklzxcvbnmqwerty";
-
-    short* temp = bwt_encode(test, &posp);
-
-    short* out = bwt_decode(temp, posp);
-
-    assert(!memcmp(test, out, 32));
-
-    return 0;
-
     SDL_SetMainReady();
     SDL_Init(SDL_INIT_VIDEO);
 

@@ -6,6 +6,7 @@
 #include "dct.h"
 #include "huffman.h"
 #include "yuv.h"
+#include "bwt.h"
 
 int ic_sort_blocks(const void* val1, const void* val2)
 {
@@ -180,6 +181,14 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
         short tempdyout[MB_SIZE][MB_SIZE];
         dct_encode_block(yout, uout, vout, tempdyout, cblock->uout, cblock->vout);
         ic_zigzag_array((const short(*)[16]) tempdyout, cblock->yout);
+
+        short* asd = bwt_encode(&cblock->yout[0][0], &cblock->posp);
+
+        short* decoded = bwt_decode(&cblock->yout[0][0], cblock->posp);
+        assert(!memcmp(&cblock->yout[0][0], decoded, sizeof(cblock->yout)));
+
+        memcpy(cblock->yout, asd, 512);
+        free(asd);
     }
 }
 
@@ -232,8 +241,12 @@ void ic_decode_image(const unsigned char* prevFrame, const compressed_macroblock
         unsigned char uout[4][4];
         unsigned char vout[4][4];
 
+        short* asdf = bwt_decode(&block->yout[0][0], block->posp);
+
         short tempdyout[MB_SIZE][MB_SIZE];
-        ic_unzigzag_array(block->yout, tempdyout);
+        ic_unzigzag_array(asdf, tempdyout);
+
+        free(asdf);
 
         dct_decode_block((const short(*)[MB_SIZE]) tempdyout, block->uout, block->vout,
                          yout, uout, vout);
