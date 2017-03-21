@@ -21,13 +21,6 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     array_uint8_t* huff_enc_data;
     unsigned char* retval;
 
-    for(const compressed_macroblock_t* cblock = cblocks; cblock < cblocks + numBlocks; cblock++)
-    {
-        short* temp = bwt_encode((const short*) cblock->yout, &header.bwt_pos);
-        memcpy(cblock->yout, temp, sizeof(cblock->yout));
-        free(temp);
-    }
-
     lz_enc_data = lz_encode((const unsigned char*) cblocks, sizeof(compressed_macroblock_t) * numBlocks);
 
     huff_enc_data = huffman_encode((const unsigned char*) lz_enc_data->base,

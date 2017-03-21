@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-short* bwt_encode(const short* inarr, unsigned short* posp);
-short* bwt_decode(short outs[16], unsigned short pos);
+void bwt_encode(const short* inarr, short outarr[256], short indexlist[256]);
+void bwt_decode(short outs[256], short indexlist[256], short outv[256]);
 
 #ifdef __cplusplus
 }

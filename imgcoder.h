@@ -19,9 +19,9 @@ typedef struct __attribute__((__packed__))
     unsigned char mb_x;
     unsigned char mb_y;
     short yout[MB_SIZE][MB_SIZE];
+    short indexlist[256];
     short uout[4][4];
     short vout[4][4];
-    short posp;
 } compressed_macroblock_t;
 
 #ifdef __cplusplus
