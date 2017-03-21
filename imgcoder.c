@@ -185,10 +185,6 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
         short temp[256];
         bwt_encode(&cblock->yout[0][0], temp, cblock->indexlist);
 
-        short decoded[256];
-        bwt_decode(temp, cblock->indexlist, decoded);
-        assert(!memcmp(&cblock->yout[0][0], decoded, sizeof(cblock->yout)));
-
         memcpy(&cblock->yout[0][0], temp, 512);
     }
 }

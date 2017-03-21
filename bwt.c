@@ -26,27 +26,15 @@ int bwt_sort_shorts(const void* p, const void* q)
     const short* x = *(const short**) p;
     const short* y = *(const short**) q;
 
-    /*for(int i = 15; i >= 0; i--)
+    for(int i = 0; i < 256; i++)
     {
         if(x[i] < y[i])
         {
-            return -1;
+            return 1;
         }
         else if(x[i] > y[i])
         {
-            return 1;
-        }
-    }*/
-
-    for(int i = 0; i < 16; i++)
-    {
-        if(x[i] < y[i])
-        {
             return -1;
-        }
-        else if(x[i] > y[i])
-        {
-            return 1;
         }
     }
 
@@ -77,7 +65,7 @@ void bwt_encode(const short* inarr, short outarr[256], short indexlist[256])
         srots[i] = rots[i];
     }
 
-    //qsort(srots, 256, sizeof(short*), bwt_sort_shorts);
+    qsort(srots, 256, sizeof(short*), bwt_sort_shorts);
 
     for(int i = 0; i < 256; i++)
     {
@@ -91,10 +79,6 @@ void bwt_encode(const short* inarr, short outarr[256], short indexlist[256])
     {
         outarr[i] = srots[i][255];
     }
-
-    short decoded[256];
-    bwt_decode(outarr, indexlist, decoded);
-    assert(!memcmp(inarr, decoded, sizeof(decoded)));
 }
 
 void bwt_decode(short outs[256], short indexlist[256], short outv[256])
