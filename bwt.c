@@ -2,23 +2,18 @@
 #include "array.h"
 #include "bwt.h"
 
-short** bwt_gen_rotations(const short* inarr)
+static void bwt_gen_rotations(const short* inarr, short* rots[256], short* srots[256], short storage[512])
 {
-    // FIXME: will probably need to do MB_SIZE instead of MB_SIZE*MB_SIZE
-    short** outarr = (short**) malloc(256 * sizeof(short*));
-    short* block = (short*) malloc(2 * 256 * sizeof(short));        // FIXME: block leaks
-
-    memcpy(block, inarr, sizeof(short) * 256);
-    memcpy(block + 256, inarr, sizeof(short) * 256);
+    memcpy(storage, inarr, sizeof(short) * 256);
+    memcpy(storage + 256, inarr, sizeof(short) * 256);
 
     for(int i = 0; i < 256; i++)
     {
-        short* tb = block + i;
+        short* tb = storage + i;
 
-        outarr[i] = tb;
+        rots[i] = tb;
+        srots[i] = tb;
     }
-
-    return outarr;
 }
 
 int bwt_sort_shorts(const void* p, const void* q)
@@ -41,6 +36,40 @@ int bwt_sort_shorts(const void* p, const void* q)
     return 0;
 }
 
+static void bwt_merge_sort(short* srots[256], int left, int right, short* scratch[256])
+{
+    return;
+    if(right == left + 1)
+    {
+        return;
+    }
+
+    int length = right - left;
+    int midpoint_distance = length / 2;
+    int l = left;
+    int r = left + midpoint_distance;
+
+    bwt_merge_sort(srots, left, left + midpoint_distance, scratch);
+    bwt_merge_sort(srots, left + midpoint_distance, right, scratch);
+
+    for(int i = 0; i < length; i++)
+    {
+        if(l < left + midpoint_distance && (r == right || srots[l] <srots[r]))
+        {
+            scratch[i] = srots[l];
+        }
+        else
+        {
+            scratch[i] = srots[r];
+        }
+    }
+
+    for(int i = left; i < right; i++)
+    {
+        srots[i] = scratch[i - left];
+    }
+}
+
 static int index_of(short* table[256], short search[256])
 {
     for(int i = 0; i < 256; i++)
@@ -57,15 +86,15 @@ static int index_of(short* table[256], short search[256])
 
 void bwt_encode(const short* inarr, short outarr[256], short indexlist[256])
 {
-    short** rots = bwt_gen_rotations(inarr);       // array of short*s
+    short storage[512];
+    short* rots[256];
     short* srots[256];
+    short* scratch[256];
 
-    for(int i = 0; i < 256; i++)
-    {
-        srots[i] = rots[i];
-    }
+    bwt_gen_rotations(inarr, rots, srots, storage);
+    bwt_merge_sort(srots, 0, 256, scratch);
 
-    qsort(srots, 256, sizeof(short*), bwt_sort_shorts);
+    //qsort(srots, 256, sizeof(short*), bwt_sort_shorts);
 
     for(int i = 0; i < 256; i++)
     {
@@ -73,10 +102,7 @@ void bwt_encode(const short* inarr, short outarr[256], short indexlist[256])
         index1 = (index1 < 255) ? index1 + 1 : 0;
 
         indexlist[i] = index_of(srots, rots[index1]);
-    }
 
-    for(int i = 0; i < 256; i++)
-    {
         outarr[i] = srots[i][255];
     }
 }

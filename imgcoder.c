@@ -163,6 +163,7 @@ void ic_unzigzag_array(const short invals[MB_SIZE][MB_SIZE], short outvals[MB_SI
 
 void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macroblock_t* cblocks)
 {
+    int bwttime = 0;
     for(int i = 0; i < numBlocks; i++)
     {
         macroblock_t* block = blocks + i;
@@ -182,11 +183,14 @@ void ic_compress_blocks(macroblock_t* blocks, short numBlocks, compressed_macrob
         dct_encode_block(yout, uout, vout, tempdyout, cblock->uout, cblock->vout);
         ic_zigzag_array((const short(*)[16]) tempdyout, cblock->yout);
 
+        int time1 = SDL_GetTicks();
         short temp[256];
         bwt_encode(&cblock->yout[0][0], temp, cblock->indexlist);
+        bwttime += (SDL_GetTicks() - time1);
 
         memcpy(&cblock->yout[0][0], temp, 512);
     }
+    printf("compress %hu blocks in avg %f ms, total %u ms\n", numBlocks, (float) bwttime / numBlocks, bwttime);
 }
 
 void ic_clean_up_compressed_blocks(compressed_macroblock_t* cblocks, short numBlocks)

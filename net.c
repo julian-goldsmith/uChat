@@ -14,6 +14,8 @@ typedef struct
     unsigned short bwt_pos;
 } packet_header_t;
 
+#include <SDL2/SDL.h>
+
 unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cblocks, int* totalSize, short numBlocks)
 {
     packet_header_t header;
@@ -21,12 +23,16 @@ unsigned char* net_serialize_compressed_blocks(const compressed_macroblock_t* cb
     array_uint8_t* huff_enc_data;
     unsigned char* retval;
 
+    int time1 = SDL_GetTicks();
     lz_enc_data = lz_encode((const unsigned char*) cblocks, sizeof(compressed_macroblock_t) * numBlocks);
+    printf("lz in %u ticks\n", SDL_GetTicks() - time1);
 
+    time1 = SDL_GetTicks();
     huff_enc_data = huffman_encode((const unsigned char*) lz_enc_data->base,
                                    lz_enc_data->len * 2,
                                    header.frequencies,
                                    &header.bit_len);
+    printf("huffman in %u ticks\n", SDL_GetTicks() - time1);
 
     header.magic = 0x1234;
     header.compressed_len = huff_enc_data->len;
