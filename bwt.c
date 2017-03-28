@@ -16,11 +16,8 @@ static void bwt_gen_rotations(const short* inarr, short* rots[256], short* srots
     }
 }
 
-int bwt_sort_shorts(const void* p, const void* q)
+int bwt_sort_shorts(const short* x, const short* y)
 {
-    const short* x = *(const short**) p;
-    const short* y = *(const short**) q;
-
     for(int i = 0; i < 256; i++)
     {
         if(x[i] < y[i])
@@ -36,38 +33,40 @@ int bwt_sort_shorts(const void* p, const void* q)
     return 0;
 }
 
-static void bwt_merge_sort(short* srots[256], int left, int right, short* scratch[256])
+static int bwt_quicksort_partition(short** srots, int len)
 {
-    return;
-    if(right == left + 1)
+    int i = 0;
+
+    for(int j = 0; j < len; j++)
+    {
+        if(bwt_sort_shorts(srots[j], srots[0]))
+        {
+            i++;
+
+            short* temp = srots[j];
+            srots[j] = srots[i];
+            srots[i] = temp;
+        }
+    }
+
+    short* temp = srots[len - 1];
+    srots[len - 1] = srots[i];
+    srots[i] = temp;
+
+    return i;
+}
+
+static void bwt_quicksort(short** srots, int len)
+{
+    if(len == 1)
     {
         return;
     }
 
-    int length = right - left;
-    int midpoint_distance = length / 2;
-    int l = left;
-    int r = left + midpoint_distance;
+    int part_idx = bwt_quicksort_partition(srots, len);
 
-    bwt_merge_sort(srots, left, left + midpoint_distance, scratch);
-    bwt_merge_sort(srots, left + midpoint_distance, right, scratch);
-
-    for(int i = 0; i < length; i++)
-    {
-        if(l < left + midpoint_distance && (r == right || srots[l] <srots[r]))
-        {
-            scratch[i] = srots[l];
-        }
-        else
-        {
-            scratch[i] = srots[r];
-        }
-    }
-
-    for(int i = left; i < right; i++)
-    {
-        srots[i] = scratch[i - left];
-    }
+    bwt_quicksort(srots, part_idx);
+    bwt_quicksort(srots + part_idx, len - part_idx);
 }
 
 static int index_of(short* table[256], short search[256])
@@ -92,7 +91,8 @@ void bwt_encode(const short* inarr, short outarr[256], short indexlist[256])
     short* scratch[256];
 
     bwt_gen_rotations(inarr, rots, srots, storage);
-    bwt_merge_sort(srots, 0, 256, scratch);
+    //bwt_merge_sort(srots, 0, 256, scratch);
+    bwt_quicksort(srots, 256);
 
     //qsort(srots, 256, sizeof(short*), bwt_sort_shorts);
 
