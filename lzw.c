@@ -81,6 +81,7 @@ array_sint16_t* lz_encode(const unsigned char* file_data, int file_len)
             pos++;
         }
 
+        assert(prev_code >= 0);
         array_sint16_append(out_values, prev_code);
     }
 

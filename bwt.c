@@ -88,7 +88,7 @@ void bwt_encode(const short* inarr, short outarr[256], short indexlist[256])
     short storage[512];
     short* rots[256];
     short* srots[256];
-    short* scratch[256];
+    //short* scratch[256];
 
     bwt_gen_rotations(inarr, rots, srots, storage);
     //bwt_merge_sort(srots, 0, 256, scratch);

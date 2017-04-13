@@ -2,7 +2,6 @@
 #include "array.h"
 #include "huffman.h"
 #include "lzw.h"
-#include "bwt.h"
 
 typedef struct
 {
@@ -11,7 +10,6 @@ typedef struct
     unsigned short frequencies[256];
     unsigned int compressed_len;
     unsigned int bit_len;
-    unsigned short bwt_pos;
 } packet_header_t;
 
 #include <SDL2/SDL.h>

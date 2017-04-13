@@ -19,7 +19,7 @@ typedef struct __attribute__((__packed__))
     unsigned char mb_x;
     unsigned char mb_y;
     short yout[MB_SIZE][MB_SIZE];
-    short indexlist[256];
+    //short indexlist[256];         // this causes lz_encode to error out for some reason, but only when we don't do bwt
     short uout[4][4];
     short vout[4][4];
 } compressed_macroblock_t;
